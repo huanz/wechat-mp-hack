@@ -2,9 +2,12 @@
   "name": "wechat-mp-hack",
   "version": "1.0.0",
   "description": "node.js wechat mp api hack",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "babel-node ./run.js --debug",
+    "postinstall": "npm install babel-cli babel-preset-env",
+    "preinstall": "babel src -d dist"
   },
   "keywords": [
     "node.js",
@@ -16,5 +19,9 @@
   "license": "ISC",
   "dependencies": {
     "request": "^2.79.0"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.22.2",
+    "babel-preset-env": "^1.1.8"
   }
 }
