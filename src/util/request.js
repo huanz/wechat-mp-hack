@@ -12,7 +12,13 @@ const r = request.defaults({
         'X-Requested-With': 'XMLHttpRequest'
     },
     json: true,
-    jar: j
+    jar: j,
+    qs: {
+        lang: 'zh_CN'
+    },
+    form: {
+        lang: 'zh_CN'
+    }
 });
 
 const WechatRequest = (options) => {

@@ -29,7 +29,7 @@ export default class Wechat {
                             Log.info('完成扫描，开始登录');
                             this.login(redirectUrl);
                         });
-                    }).pipe(fs.createWriteStream('qrcode.jpg')).on('error', Log.error);
+                    }).pipe(fs.createWriteStream('qrcode-login.jpg')).on('error', Log.error);
                 });
             } else {
                 Log.error(body);
@@ -38,7 +38,7 @@ export default class Wechat {
     }
     _checkLogin() {
         const dologin = (resolve) => {
-            WechatRequest.getJSON(`${Config.api.loginqrcode}?action=ask&token=&lang=zh_CN&token=&lang=zh_CN&f=json&ajax=1&random=${Math.random()}`).then(body => {
+            WechatRequest.getJSON(`${Config.api.loginqrcode}?action=ask&f=json&ajax=1&random=${Math.random()}`).then(body => {
                 if (body.status === 1) {
                     resolve(body);
                 } else {
@@ -54,13 +54,11 @@ export default class Wechat {
     }
     login(referer) {
         WechatRequest({
-            url: `${Config.api.bizlogin}?action=login&token=&lang=zh_CN`,
+            url: `${Config.api.bizlogin}?action=login`,
             headers: {
                 'Referer': referer
             },
             form: {
-                token: '',
-                lang: 'zh_CN',
                 f: 'json',
                 ajax: 1,
                 random: Math.random()
@@ -87,13 +85,12 @@ export default class Wechat {
      */
     operate_appmsg() {
         WechatRequest({
-            url: `${Config.api.operate_appmsg}?t=ajax-response&sub=create&type=10&token=${this.token}&lang=zh_CN`,
+            url: `${Config.api.operate_appmsg}?t=ajax-response&sub=create&type=10&token=${this.token}`,
             headers: {
-                'Referer': `${Config.api.appmsg}?t=media/appmsg_edit&action=edit&type=10&isMul=1&isNew=1&lang=zh_CN&token=${this.token}`
+                'Referer': `${Config.api.appmsg}?t=media/appmsg_edit&action=edit&type=10&isMul=1&isNew=1&token=${this.token}`
             },
             form: {
                 token: this.token,
-                lang: 'zh_CN',
                 f: 'json',
                 ajax: 1,
                 random: Math.random(),
@@ -126,15 +123,86 @@ export default class Wechat {
      */
     filetransfer() {
         WechatRequest({
-            url: `${Config.api.filetransfer}?action=upload_material&f=json&scene=1&writetype=doublewrite&groupid=1&ticket_id=${this.ticket.ticket_id}&ticket=${this.ticket.ticket}&svr_time=${Math.floor(Date.now()/1000)}&lang=zh_CN&seq=1&token=${this.token}&lang=zh_CN`,
+            url: `${Config.api.filetransfer}?action=upload_material&f=json&scene=1&writetype=doublewrite&groupid=1&ticket_id=${this.ticket.ticket_id}&ticket=${this.ticket.ticket}&svr_time=${Math.floor(Date.now()/1000)}&seq=1&token=${this.token}`,
             headers: {
-                'Referer': `${Config.api.filepage}?type=2&begin=0&count=12&t=media/img_list&lang=zh_CNtoken=${this.token}`
+                'Referer': `${Config.api.filepage}?type=2&begin=0&count=12&t=media/img_listtoken=${this.token}`
             },
             multipart: {
                 body: fs.createReadStream('qrcode.jpg')
             }
         }).then(body => {
 
+        });
+    }
+    /**
+     * @desc 群发
+     */
+    masssend(msgid) {
+        WechatRequest({
+            url: `${Config.api.masssend}?action=check_ad&token=${this.token}`,
+            form: {
+                token: this.token,
+                f: 'json',
+                ajax: 1,
+                random: Math.random(),
+                appmsg_id: msgid
+            }
+        }).then(body => {
+            if (body.base_resp.ret === 0) {
+
+            } else {
+                Log.error(body);
+            }
+        });
+    }
+    getuuid() {
+        WechatRequest({
+            url: `${Config.api.safeassistant}?1=1&token=${this.token}`,
+            form: {
+                token: this.token,
+                f: 'json',
+                ajax: 1,
+                random: Math.random(),
+                action: 'get_ticket'
+            }
+        }).then(body => {
+            if (body.base_resp.ret === 0) {
+                WechatRequest({
+                    url: `${Config.api.safeqrconnect}?1=1&token=${this.token}`,
+                    form: {
+                        token: this.token,
+                        f: 'json',
+                        ajax: 1,
+                        random: Math.random(),
+                        state: 0,
+                        login_type: 'safe_center',
+                        type: 'json',
+                        ticket: body.ticket
+                    }
+                }).then(res => {
+                    WechatRequest.get(`${Config.api.safeqrcode}?action=check&type=msgs&ticket=${body.ticket}&uuid=${res.uuid}&msgid=${body.operation_seq}`).on('response', () => {
+                        this.safeuuid(res.uuid);
+                    }).pipe(fs.createWriteStream('qrcode-safe.jpg')).on('error', Log.error);
+                });
+            } else {
+                Log.error(body);
+            }
+        });
+    }
+    safeuuid(uuid) {
+        WechatRequest({
+            url: `${Config.api.safeuuid}?timespam=${Date.now()}&token=${this.token}`,
+            form: {
+                token: this.token,
+                f: 'json',
+                ajax: 1,
+                random: Math.random(),
+                uuid: uuid,
+                action: 'json',
+                type: 'json'
+            }
+        }).then(body => {
+            // {"errcode":401,"key":"","pass_ticket":"","card_name":"","check_status":0}
         });
     }
 }

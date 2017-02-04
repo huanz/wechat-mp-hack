@@ -8,7 +8,11 @@ const API = {
     operate_appmsg: `${BASEURL}/cgi-bin/operate_appmsg`,
     appmsg: `${BASEURL}/cgi-bin/appmsg`,
     filetransfer: `${BASEURL}/cgi-bin/filetransfer`,
-    filepage: `${BASEURL}/cgi-bin/filepage`
+    filepage: `${BASEURL}/cgi-bin/filepage`,
+    masssend: `${BASEURL}/cgi-bin/masssend`,
+    safeassistant: `${BASEURL}/misc/safeassistant`,
+    safeqrconnect: `${BASEURL}/safe/safeqrconnect`,
+    safeuuid: `${BASEURL}/safe/safeuuid`
 };
 
 const Config = {
