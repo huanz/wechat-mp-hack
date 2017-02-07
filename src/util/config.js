@@ -12,6 +12,7 @@ const API = {
     masssend: `${BASEURL}/cgi-bin/masssend`,
     safeassistant: `${BASEURL}/misc/safeassistant`,
     safeqrconnect: `${BASEURL}/safe/safeqrconnect`,
+    safeqrcode: `${BASEURL}/safe/safeqrcode`,
     safeuuid: `${BASEURL}/safe/safeuuid`
 };
 
