@@ -1,4 +1,6 @@
 import * as fs from 'fs';
+import request from 'request';
+import async from 'async';
 import WechatRequest from './util/request';
 import Config from './util/config';
 import * as Log from './util/log';
@@ -109,63 +111,87 @@ export default class Wechat {
     }
     /**
      * @desc 创建图文素材
+     * @param {Array<Object>} news
      */
-    operate_appmsg() {
+    operate_appmsg(news) {
         WechatRequest({
             url: `${Config.api.operate_appmsg}?t=ajax-response&sub=create&type=10&token=${this.token}`,
             headers: {
                 'Referer': `${Config.api.appmsg}?t=media/appmsg_edit&action=edit&type=10&isMul=1&isNew=1&token=${this.token}`
             },
-            form: {
+            form: Object.assign({
                 token: this.token,
                 f: 'json',
                 ajax: 1,
                 random: Math.random(),
-                count: 1, // 文章数量
-                title0: 'title',
-                content0: '内容',
-                digest0: '描述',
-                fileid0: 100000004,
-                cdn_url0: '图片地址',
-                music_id0: '',
-                video_id0: '',
-                show_cover_pic0: 0,
-                shortvideofileid0: '',
-                vid_type0: '',
-                copyright_type0: 0,
-                need_open_comment0: 1,
-                only_fans_can_comment0: 0,
-                sourceurl0: '原文地址',
-                fee0: 0,
-                voteid0: '',
-                voteismlt0: '',
-                ad_id0: ''
-            }
+                count: news.length
+            }, this._transformToMpParam(news))
         }).then(body => {
+
+        });
+    }
+    /**
+     * @desc 数组变成微信参数
+     * title html
+     */
+    _transformToMpParam(arr) {
+        let obj = {};
+        arr.map((item, index) => {
+            obj[`title${index}`] = item.title;
+            obj[`content${index}`] = item.html;
+            obj[`digest${index}`] = item.description;
+            obj[`fileid${index}`] = item.fileid; // 图片微信id
+            obj[`cdn_url${index}`] = item.cdn_url;
+            obj[`digest${index}`] = item.description;
+            obj[`sourceurl{index}`] = item.url;
+            obj[`show_cover_pic${index}`] = 0;
+            obj[`need_open_comment${index}`] = 1;
+            obj[`music_id${index}`] = '';
+            obj[`video_id${index}`] = '';
+            obj[`shortvideofileid${index}`] = '';
+            obj[`copyright_type${index}`] = '';
+            obj[`only_fans_can_comment${index}`] = '';
+            obj[`fee${index}`] = '';
+            obj[`voteid${index}`] = '';
+            obj[`voteismlt${index}`] = '';
+            obj[`ad_id${index}`] = '';
+        });
+        return obj;
+    }
+    /**
+     * @desc 批量上传图片至公众号
+     */
+    batchUpload(arr) {
+        async.every(arr, (imgurl, callback) => {
 
         });
     }
     /**
      * @desc 上传图片
      */
-    filetransfer() {
-        WechatRequest({
-            url: `${Config.api.filetransfer}?action=upload_material&f=json&scene=1&writetype=doublewrite&groupid=1&ticket_id=${this.wxdata.user_name}&ticket=${this.wxdata.ticket}&svr_time=${Math.floor(Date.now()/1000)}&seq=1&token=${this.token}`,
-            headers: {
-                'Referer': `${Config.api.filepage}?type=2&begin=0&count=12&t=media/img_list&token=${this.token}`
-            },
-            formData: {
-                file: fs.createReadStream('qrcode-login.jpg')
-            }
-        }).then(body => {
-            if (body.base_resp.ret === 0) {
-                return {
-                    content: body.content,
-                    cdn_url: body.cdn_url
-                };
-            } else {
-                throw body;
-            }
+    filetransfer(imgurl) {
+        return new Promise((resolve, reject) => {
+            let filename = Date.now() + '.png';
+            request(imgurl).on('response', () => {
+                WechatRequest({
+                    url: `${Config.api.filetransfer}?action=upload_material&f=json&scene=1&writetype=doublewrite&groupid=1&ticket_id=${this.wxdata.user_name}&ticket=${this.wxdata.ticket}&svr_time=${Math.floor(Date.now()/1000)}&seq=1&token=${this.token}`,
+                    headers: {
+                        'Referer': `${Config.api.filepage}?type=2&begin=0&count=12&t=media/img_list&token=${this.token}`
+                    },
+                    formData: {
+                        file: fs.createReadStream(filename)
+                    }
+                }).then(body => {
+                    if (body.base_resp.ret === 0) {
+                        resolve({
+                            content: body.content,
+                            cdn_url: body.cdn_url
+                        });
+                    } else {
+                        reject(body);
+                    }
+                }).catch(reject);
+            }).pipe(fs.createWriteStream(filename)).on('error', reject);
         });
     }
     /**

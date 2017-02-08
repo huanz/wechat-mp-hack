@@ -18,6 +18,7 @@
   "author": "bukas",
   "license": "ISC",
   "dependencies": {
+    "async": "^2.1.4",
     "request": "^2.79.0"
   },
   "devDependencies": {
