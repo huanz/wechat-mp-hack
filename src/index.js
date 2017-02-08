@@ -7,10 +7,9 @@ export default class Wechat {
     constructor(username, pwd) {
         this.username = username;
         this.pwd = pwd;
-        this.startlogin();
     }
-    startlogin() {
-        WechatRequest({
+    _startlogin() {
+        return WechatRequest({
             url: `${Config.api.bizlogin}?action=startlogin`,
             form: {
                 username: this.username,
@@ -20,18 +19,9 @@ export default class Wechat {
             }
         }).then(body => {
             if (body.base_resp.ret === 0) {
-                let redirectUrl = Config.baseurl + body.redirect_url;
-                WechatRequest.getJSON(redirectUrl).then(() => {
-                    WechatRequest.get(`${Config.api.loginqrcode}?action=getqrcode&param=4300`).on('response', () => {
-                        Log.info('请扫描二维码确认登录！');
-                        this._checkLogin().then(() => {
-                            Log.info('完成扫描，开始登录');
-                            this.login(redirectUrl);
-                        }).catch(Log.error);
-                    }).pipe(fs.createWriteStream('qrcode-login.jpg')).on('error', Log.error);
-                });
+                return Config.baseurl + body.redirect_url;
             } else {
-                Log.error(body);
+                throw body;
             }
         });
     }
@@ -47,38 +37,73 @@ export default class Wechat {
                 }
             }).catch(reject);
         };
-        return new Promise(dologin);
+        return new Promise((resolve, reject) => {
+            WechatRequest.get(`${Config.api.loginqrcode}?action=getqrcode&param=4300`).on('response', () => {
+                Log.info('请扫描二维码确认登录！');
+                dologin(resolve, reject);
+            }).pipe(fs.createWriteStream('qrcode-login.jpg')).on('error', reject);
+        });
     }
-    login(referer) {
-        WechatRequest({
-            url: `${Config.api.bizlogin}?action=login`,
-            headers: {
-                'Referer': referer
-            },
-            form: {
-                f: 'json',
-                ajax: 1,
-                random: Math.random()
-            }
-        }).then(res => {
-            let token = null;
-            if (res.base_resp.ret === 0 && (token = res.redirect_url.match(/token=(\d+)/))) {
-                this.token = token[1];
-                Log.info('登录成功，token=' + this.token);
-                let cookies = WechatRequest.cookies();
-                this.ticket = {
-                    ticket: cookies.ticket,
-                    ticket_id: cookies.ticket_id
-                };
-
-                /**
-                 * @desc test
-                 */
-                this.masssend(100000007);
-            } else if (res.base_resp.ret === -1) {
-                this.login(referer);
+    _doLogin(referer) {
+        let loginAction = (resolve, reject) => {
+            WechatRequest({
+                url: `${Config.api.bizlogin}?action=login`,
+                headers: {
+                    'Referer': referer
+                },
+                form: {
+                    f: 'json',
+                    ajax: 1,
+                    random: Math.random()
+                }
+            }).then(body => {
+                let token = null;
+                if (body.base_resp.ret === 0 && (token = body.redirect_url.match(/token=(\d+)/))) {
+                    this.token = token[1];
+                    Log.info('登录成功，token=' + this.token);
+                    resolve(token[1]);
+                } else if (body.base_resp.ret === -1) {
+                    loginAction(resolve, reject);
+                } else {
+                    reject(body);
+                }
+            });
+        };
+        return new Promise(loginAction);
+    }
+    _wxdata() {
+        return new Promise((resolve, reject) => {
+            WechatRequest.get(`${Config.api.home}?t=home/index&lang=zh_CN&token=${this.token}`, (e, r, body) => {
+                if (e) {
+                    reject(e);
+                } else {
+                    let ticketMatch = body.match(/ticket:"(\w+)"/);
+                    let userNameMatch = body.match(/user_name:"(\w+)"/);
+                    if (ticketMatch && userNameMatch) {
+                        this.wxdata = {
+                            ticket: ticketMatch[1],
+                            user_name: userNameMatch[1]
+                        };
+                        resolve(this.wxdata);
+                    } else {
+                        reject('解析wxdata失败');
+                    }
+                }
+            });
+        });
+    }
+    login() {
+        return new Promise((resolve, reject) => {
+            if (this.token) {
+                resolve(this.token);
             } else {
-                Log.error(res);
+                this._startlogin().then(redirectUrl => {
+                    this._checkLogin().then(() => {
+                        this._doLogin(redirectUrl).then(() => {
+                            this._wxdata().then(resolve).catch(reject);
+                        }).catch(reject);
+                    }).catch(reject);
+                }).catch(reject);
             }
         });
     }
@@ -125,15 +150,22 @@ export default class Wechat {
      */
     filetransfer() {
         WechatRequest({
-            url: `${Config.api.filetransfer}?action=upload_material&f=json&scene=1&writetype=doublewrite&groupid=1&ticket_id=${this.ticket.ticket_id}&ticket=${this.ticket.ticket}&svr_time=${Math.floor(Date.now()/1000)}&seq=1&token=${this.token}`,
+            url: `${Config.api.filetransfer}?action=upload_material&f=json&scene=1&writetype=doublewrite&groupid=1&ticket_id=${this.wxdata.user_name}&ticket=${this.wxdata.ticket}&svr_time=${Math.floor(Date.now()/1000)}&seq=1&token=${this.token}`,
             headers: {
-                'Referer': `${Config.api.filepage}?type=2&begin=0&count=12&t=media/img_listtoken=${this.token}`
+                'Referer': `${Config.api.filepage}?type=2&begin=0&count=12&t=media/img_list&token=${this.token}`
             },
-            multipart: {
-                body: fs.createReadStream('qrcode.jpg')
+            formData: {
+                file: fs.createReadStream('qrcode-login.jpg')
             }
         }).then(body => {
-
+            if (body.base_resp.ret === 0) {
+                return {
+                    content: body.content,
+                    cdn_url: body.cdn_url
+                };
+            } else {
+                throw body;
+            }
         });
     }
     /**

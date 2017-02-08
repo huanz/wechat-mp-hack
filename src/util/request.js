@@ -15,9 +15,6 @@ const r = request.defaults({
     jar: j,
     qs: {
         lang: 'zh_CN'
-    },
-    form: {
-        lang: 'zh_CN'
     }
 });
 
