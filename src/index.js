@@ -3,30 +3,6 @@ import WechatRequest from './util/request';
 import Config from './util/config';
 import * as Log from './util/log';
 
-/**
-* { errcode: 405,
-  code: '',
-  appname: '',
-  redirect_uri: '',
-  key: '',
-  pass_ticket: 'PukefQN',
-  card_name: '',
-  check_status: 0,
-  confirm_resp:
-   { redirect_uri: '',
-     component_status: 0,
-     component_pre_auth_code: '',
-     component_appid: '',
-     bizuin: '',
-     open_component_uin: 0,
-     open_mp_appid: '',
-     open_mp_uin: 0,
-     open_biz_mp_mchid: 0,
-     biz_mp_uin: 0,
-     biz_mp_appid: '',
-     biz_mp_mchid: 0 } }
-*/
-
 export default class Wechat {
     constructor(username, pwd) {
         this.username = username;
@@ -163,29 +139,26 @@ export default class Wechat {
     /**
      * @desc 群发
      */
-    masssend(msgid) {
-        Log.info('开始群发');
-        WechatRequest({
-            url: `${Config.api.masssend}?action=check_ad&token=${this.token}`,
-            form: {
-                token: this.token,
-                f: 'json',
-                ajax: 1,
-                random: Math.random(),
-                appmsg_id: msgid
-            }
-        }).then(body => {
-            if (body.base_resp.ret === 0) {
-                Log.info(body);
-                this.getuuid();
-            } else {
-                Log.error(body);
-            }
-        });
+    masssend(appmsgid) {
+        this.getticket().then(body => {
+            this.getuuid(body.ticket).then(uuid => {
+                let params = Object.assign({
+                    uuid: uuid
+                }, body);
+                this.checkuuid(params).then(res => {
+                    params.code = res.code;
+                    params.appmsgid = appmsgid;
+                    this.safesend(params);
+                }).catch(Log.error);
+            }).catch(Log.error);
+        }).catch(Log.error);
     }
-    getuuid() {
+    /**
+     * @desc 获取群发ticket
+     */
+    getticket() {
         Log.info('获取群发ticket');
-        WechatRequest({
+        return WechatRequest({
             url: `${Config.api.safeassistant}?1=1&token=${this.token}`,
             form: {
                 token: this.token,
@@ -196,35 +169,40 @@ export default class Wechat {
             }
         }).then(body => {
             if (body.base_resp.ret === 0) {
-                Log.info(body);
-                WechatRequest({
-                    url: `${Config.api.safeqrconnect}?1=1&token=${this.token}`,
-                    form: {
-                        token: this.token,
-                        f: 'json',
-                        ajax: 1,
-                        random: Math.random(),
-                        state: 0,
-                        login_type: 'safe_center',
-                        type: 'json',
-                        ticket: body.ticket
-                    }
-                }).then(res => {
-                    Log.info(res);
-                    WechatRequest.get(`${Config.api.safeqrcode}?action=check&type=msgs&ticket=${body.ticket}&uuid=${res.uuid}&msgid=${body.operation_seq}`).on('response', () => {
-                        Log.info('请扫描群发认证二维码！');
-                        this._checkuuid(res.uuid).then(result => {
-                            Log.info('成功扫描群发认证二维码！');
-                            this.safesend(res.uuid, result);
-                        });
-                    }).pipe(fs.createWriteStream('qrcode-safe.jpg')).on('error', Log.error);
-                });
+                Log.info('群发ticket获取成功');
+                return {
+                    ticket: body.ticket,
+                    operation_seq: body.operation_seq
+                };
             } else {
-                Log.error(body);
+                Log.info('群发ticket获取失败');
+                throw body;
             }
         });
     }
-    _checkuuid(uuid) {
+    getuuid(ticket) {
+        return WechatRequest({
+            url: `${Config.api.safeqrconnect}?1=1&token=${this.token}`,
+            form: {
+                token: this.token,
+                f: 'json',
+                ajax: 1,
+                random: Math.random(),
+                state: 0,
+                login_type: 'safe_center',
+                type: 'json',
+                ticket: ticket
+            }
+        }).then(body => {
+            if (body.uuid) {
+                Log.info('成功获取uuid');
+                return body.uuid;
+            } else {
+                throw body;
+            }
+        });
+    }
+    checkuuid(obj) {
         let douuid = (resolve, reject) => {
             WechatRequest({
                 url: `${Config.api.safeuuid}?timespam=${Date.now()}&token=${this.token}`,
@@ -233,12 +211,13 @@ export default class Wechat {
                     f: 'json',
                     ajax: 1,
                     random: Math.random(),
-                    uuid: uuid,
+                    uuid: obj.uuid,
                     action: 'json',
                     type: 'json'
                 }
             }).then(body => {
                 if (body.errcode == 405) {
+                    Log.info('成功扫描群发认证二维码！');
                     resolve(body);
                 } else {
                     setTimeout(() => {
@@ -247,57 +226,51 @@ export default class Wechat {
                 }
             }).catch(reject);
         };
-        return new Promise(douuid);
+        return new Promise((resolve, reject) => {
+            WechatRequest.get(`${Config.api.safeqrcode}?action=check&type=msgs&ticket=${obj.ticket}&uuid=${obj.uuid}&msgid=${obj.operation_seq}`).on('response', () => {
+                Log.info('请扫描群发认证二维码！');
+                douuid(resolve, reject);
+            }).pipe(fs.createWriteStream('qrcode-safe.jpg')).on('error', reject);
+        });
     }
-    safesend(uuid, obj) {
+    safesend(obj) {
         WechatRequest({
-            url: `${Config.api.safeassistant}?1=1&token=${this.token}`,
+            url: `${Config.api.masssend}?t=ajax-response&token=${this.token}&req_need_vidsn=1&add_tx_video=1`,
             form: {
                 token: this.token,
                 f: 'json',
                 ajax: 1,
                 random: Math.random(),
-                action: 'get_uuid',
-                uuid: uuid
+                type: 10,
+                appmsgid: obj.appmsgid,
+                cardlimit: 1,
+                sex: 0,
+                groupid: -1,
+                synctxweibo: 0,
+                country: '',
+                province: '',
+                city: '',
+                imgcode: '',
+                direct_send: 1,
+                operation_seq: obj.operation_seq,
+                req_id: this._getid(32),
+                req_time: Date.now(),
+                code: obj.code
             }
-        }).then(res => {
-            Log.info(res);
-            if (res.base_resp.ret === 0) {
-
+        }).then(result => {
+            if (result.base_resp.ret === 0) {
+                Log.info('群发成功');
             } else {
-                Log.error(res);
+                Log.error(result);
             }
-            // WechatRequest({
-            //     url: `${Config.api.masssend}?t=ajax-response&token=${this.token}&req_need_vidsn=1&add_tx_video=1`,
-            //     form: {
-            //         token: this.token,
-            //         f: 'json',
-            //         ajax: 1,
-            //         random: Math.random(),
-            //         type: 10,
-            //         appmsgid: 100000007,
-            //         cardlimit: 1,
-            //         sex: 0,
-            //         groupid: -1,
-            //         synctxweibo: 0,
-            //         country: '',
-            //         province: '',
-            //         city: '',
-            //         imgcode: '',
-            //         operation_seq: 424698275,
-            //         req_id: '3ExDAtpwy5GxBqGIbqsFLf6teEA1BxT1',
-            //         req_time: Date.now(),
-            //         reprint_confirm: 1,
-            //         code: '50f9b0e5de46998ea5d7c777f1b519a5',
-            //         list: {"list":[{"article_title":"你应该知道的 setTimeout 秘密","source_bizuin":3018162350,"source_msgid":2651551668,"source_idx":1,"source_title":"你应该知道的 setTimeout 秘密","source_url":"http:\/\/mp.weixin.qq.com\/s?__biz=MzAxODE2MjM1MA==&mid=2651551668&idx=1&sn=d2dbdbe0bf8d3ef0171b6d7792a7919d&chksm=8025a075b7522963f48e06a6b6d5c4a2a15ab3e859d959ecd7005b21a26f24e7f9600d30e3cb#rd","idx":1,"source_auth_type":1,"source_auth_stat":0,"source_type":1,"article_url":"http:\/\/mp.weixin.qq.com\/s?__biz=MzIyMTcwODcyMg==&mid=100000007&idx=1&sn=f8b12ea9e231217ca7d51e479c4bdc1e&chksm=6839e9da5f4e60cc13b9a79fd604cd64bdb198b85c4611bfcf1a57f7c392e4d875e503ffed36#rd","white_list_status":110}]}
-            //     }
-            // }).then(result => {
-            //     if (result.base_resp.ret === 0) {
-
-            //     } else {
-            //         Log.error(result);
-            //     }
-            // });
         });
+    }
+    _getid(len) {
+        let id = '';
+        let str = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        for (let i = 0; i < len; i++) {
+            id += str.charAt(Math.floor(Math.random() * str.length));
+        }
+        return id;
     }
 }
