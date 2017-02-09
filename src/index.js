@@ -1,12 +1,15 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import fs from 'fs';
+import path from 'path';
+import events from 'events';
 import request from 'request';
 import WechatRequest from './util/request';
 import Config from './util/config';
-import * as Log from './util/log';
+import Log from './util/log';
 
-export default class Wechat {
+export default class Wechat extends events {
     constructor(username, pwd) {
+        super();
+
         this.username = username;
         this.pwd = pwd;
     }
@@ -40,10 +43,14 @@ export default class Wechat {
             }).catch(reject);
         };
         return new Promise((resolve, reject) => {
-            WechatRequest.get(`${Config.api.loginqrcode}?action=getqrcode&param=4300`).on('response', () => {
+            let filename = 'qrcode-login.png';
+            let writeStream = fs.createWriteStream(filename);
+            WechatRequest.get(`${Config.api.loginqrcode}?action=getqrcode&param=4300`).pipe(writeStream).on('error', reject);
+            writeStream.on('finish', () => {
+                this.emit('scan.login', filename);
                 Log.info('请扫描二维码确认登录！');
                 dologin(resolve, reject);
-            }).pipe(fs.createWriteStream('qrcode-login.jpg')).on('error', reject);
+            });
         });
     }
     _doLogin(referer) {
@@ -340,10 +347,14 @@ export default class Wechat {
             }).catch(reject);
         };
         return new Promise((resolve, reject) => {
-            WechatRequest.get(`${Config.api.safeqrcode}?action=check&type=msgs&ticket=${obj.ticket}&uuid=${obj.uuid}&msgid=${obj.operation_seq}`).on('response', () => {
+            let filename = 'qrcode-safe.png';
+            let writeStream = fs.createWriteStream(filename);
+            WechatRequest.get(`${Config.api.safeqrcode}?action=check&type=msgs&ticket=${obj.ticket}&uuid=${obj.uuid}&msgid=${obj.operation_seq}`).pipe(writeStream).on('error', reject);
+            writeStream.on('finish', () => {
+                this.emit('scan.send', filename);
                 Log.info('请扫描群发认证二维码！');
                 douuid(resolve, reject);
-            }).pipe(fs.createWriteStream('qrcode-safe.jpg')).on('error', reject);
+            });
         });
     }
     safesend(obj) {
@@ -385,5 +396,33 @@ export default class Wechat {
             id += str.charAt(Math.floor(Math.random() * str.length));
         }
         return id;
+    }
+    /**
+     * @desc 二维码解析
+     */
+    qrdecode(url) {
+        return new Promise((resolve, reject) => {
+            let formData = {};
+            if(/^https?:\/\//.test(url)) {
+                formData.url = url;
+            } else {
+                formData.qrcode = fs.createReadStream(url);
+            }
+            request({
+                method: 'POST',
+                url: 'http://tool.oschina.net/action/qrcode/decode',
+                headers: {
+                    'Host': 'tool.oschina.net',
+                    'Referer': 'http://tool.oschina.net/qr?type=2',
+                    'Origin': 'http://tool.oschina.net',
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36',
+                    'Upgrade-Insecure-Requests': 1
+                },
+                json: true,
+                formData: formData
+            }, (e, r, body) => {
+                e ? reject(e) : resolve(body[0]);
+            });
+        });
     }
 }
