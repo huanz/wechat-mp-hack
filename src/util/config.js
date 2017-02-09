@@ -1,3 +1,6 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
 const HOST = 'mp.weixin.qq.com';
 const BASEURL = `https://${HOST}`;
 
@@ -19,7 +22,12 @@ const API = {
 const Config = {
     host: HOST,
     baseurl: BASEURL,
-    api: API
+    api: API,
+    upload: path.join(process.cwd(), 'upload')
 };
+
+if (!fs.existsSync(Config.upload)) {
+    fs.mkdir(Config.upload, () => {});
+}
 
 export default Config;

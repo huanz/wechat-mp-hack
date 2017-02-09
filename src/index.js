@@ -1,6 +1,6 @@
 import * as fs from 'fs';
+import * as path from 'path';
 import request from 'request';
-import async from 'async';
 import WechatRequest from './util/request';
 import Config from './util/config';
 import * as Log from './util/log';
@@ -114,7 +114,30 @@ export default class Wechat {
      * @param {Array<Object>} news
      */
     operate_appmsg(news) {
-        WechatRequest({
+        return new Promise((resolve, reject) => {
+            let uploadImgs = [];
+            let postNews = news.filter((item) => {
+                let hasThumb = !!item.thumb;
+                if (hasThumb) {
+                    uploadImgs.push(item.thumb);
+                }
+                return hasThumb;
+            });
+            if (uploadImgs.length) {
+                this.batchUpload(uploadImgs).then(results => {
+                    let wechatNews = postNews.map((item, index) => {
+                        Object.assign(item, results[index]);
+                        return item;
+                    });
+                    this._operate_appmsg(wechatNews).then(resolve).catch(reject);
+                }).catch(reject);
+            } else {
+                reject('至少有一篇新闻具有图片');
+            }
+        });
+    }
+    _operate_appmsg(wechatNews) {
+        return WechatRequest({
             url: `${Config.api.operate_appmsg}?t=ajax-response&sub=create&type=10&token=${this.token}`,
             headers: {
                 'Referer': `${Config.api.appmsg}?t=media/appmsg_edit&action=edit&type=10&isMul=1&isNew=1&token=${this.token}`
@@ -124,10 +147,42 @@ export default class Wechat {
                 f: 'json',
                 ajax: 1,
                 random: Math.random(),
-                count: news.length
-            }, this._transformToMpParam(news))
+                count: wechatNews.length,
+                AppMsgId: '',
+            }, this._transformToMpParam(wechatNews))
         }).then(body => {
-
+            if (body.base_resp.ret === 0) {
+                return body.appMsgId;
+            } else {
+                let errorMap = {
+                    '-206': '目前，服务负荷过大，请稍后重试。',
+                    '-200': '登录态超时，请重新登录。',
+                    '-99': '内容超出字数，请调整',
+                    '-1': '系统错误，请注意备份内容后重试',
+                    '-2': '参数错误，请注意备份内容后重试',
+                    '-5': '服务错误，请注意备份内容后重试。',
+                    '10801': '标题不能有违反公众平台协议、相关法律法规和政策的内容，请重新编辑。',
+                    '10802': '作者不能有违反公众平台协议、相关法律法规和政策的内容，请重新编辑。',
+                    '10803': '敏感链接，请重新添加。',
+                    '10804': '摘要不能有违反公众平台协议、相关法律法规和政策的内容，请重新编辑。',
+                    '10806': '正文不能有违反公众平台协议、相关法律法规和政策的内容，请重新编辑。',
+                    '64506': '保存失败,链接不合法',
+                    '64507': '内容不能包含链接，请调整',
+                    '64508': '查看原文链接可能具备安全风险，请检查',
+                    '64509': '正文中不能包含超过3个视频，请重新编辑正文后再保存。',
+                    '64510': '内容不能包含语音，请调整',
+                    '64511': '内容不能包多个语音，请调整',
+                    '64512': '文章中语音错误,请使用语音添加按钮重新添加。',
+                    '64513': '请从正文中选择封面，再尝试保存。',
+                    '64514': '你没有权限使用话题卡片功能',
+                    '64550': '请勿插入不合法的已群发的图文消息链接',
+                    '200002': '参数错误，请注意备份内容后重试'
+                };
+                let msg = errorMap[body.base_resp.ret] || '';
+                Log.error(msg);
+                body.msg = msg;
+                throw body;
+            }
         });
     }
     /**
@@ -136,14 +191,14 @@ export default class Wechat {
      */
     _transformToMpParam(arr) {
         let obj = {};
-        arr.map((item, index) => {
+        arr.forEach((item, index) => {
             obj[`title${index}`] = item.title;
             obj[`content${index}`] = item.html;
             obj[`digest${index}`] = item.description;
             obj[`fileid${index}`] = item.fileid; // 图片微信id
             obj[`cdn_url${index}`] = item.cdn_url;
             obj[`digest${index}`] = item.description;
-            obj[`sourceurl{index}`] = item.url;
+            obj[`sourceurl${index}`] = item.url;
             obj[`show_cover_pic${index}`] = 0;
             obj[`need_open_comment${index}`] = 1;
             obj[`music_id${index}`] = '';
@@ -162,17 +217,17 @@ export default class Wechat {
      * @desc 批量上传图片至公众号
      */
     batchUpload(arr) {
-        async.every(arr, (imgurl, callback) => {
-
-        });
+        return Promise.all(arr.map(imgurl => this.filetransfer(imgurl)));
     }
     /**
      * @desc 上传图片
      */
     filetransfer(imgurl) {
         return new Promise((resolve, reject) => {
-            let filename = Date.now() + '.png';
-            request(imgurl).on('response', () => {
+            let filename = path.join(Config.upload, Date.now() + '.png');
+            let writeStream = fs.createWriteStream(filename);
+            request(imgurl).pipe(writeStream).on('error', reject);
+            writeStream.on('finish', () => {
                 WechatRequest({
                     url: `${Config.api.filetransfer}?action=upload_material&f=json&scene=1&writetype=doublewrite&groupid=1&ticket_id=${this.wxdata.user_name}&ticket=${this.wxdata.ticket}&svr_time=${Math.floor(Date.now()/1000)}&seq=1&token=${this.token}`,
                     headers: {
@@ -184,14 +239,14 @@ export default class Wechat {
                 }).then(body => {
                     if (body.base_resp.ret === 0) {
                         resolve({
-                            content: body.content,
+                            fileid: body.content,
                             cdn_url: body.cdn_url
                         });
                     } else {
                         reject(body);
                     }
                 }).catch(reject);
-            }).pipe(fs.createWriteStream(filename)).on('error', reject);
+            });
         });
     }
     /**
