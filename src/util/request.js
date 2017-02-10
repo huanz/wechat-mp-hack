@@ -1,6 +1,6 @@
 import request from 'request';
 import Config from './config';
-import * as Log from './log';
+import Log from './log';
 
 const j = request.jar();
 const r = request.defaults({

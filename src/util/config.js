@@ -5,7 +5,7 @@ const HOST = 'mp.weixin.qq.com';
 const BASEURL = `https://${HOST}`;
 
 const API = {
-    home: `${BASEURL}/cgi-bin/home`,
+    masssendpage: `${BASEURL}/cgi-bin/masssendpage`,
     bizlogin: `${BASEURL}/cgi-bin/bizlogin`,
     loginqrcode: `${BASEURL}/cgi-bin/loginqrcode`,
     operate_appmsg: `${BASEURL}/cgi-bin/operate_appmsg`,

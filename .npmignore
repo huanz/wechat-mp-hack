@@ -1,1 +1,5 @@
-dist
+.vscode
+src
+run.js
+qrcode-login.png
+qrcode-safe.png

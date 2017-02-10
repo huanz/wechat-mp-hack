@@ -1,19 +1,18 @@
 {
   "name": "wechat-mp-hack",
   "version": "1.0.0",
-  "description": "node.js wechat mp api hack",
+  "description": "微信公众号接口，无需微信认证实现自动创建素材、自动群发图文消息",
   "main": "dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "babel-node ./run.js --debug",
-    "postinstall": "npm install babel-cli babel-preset-env",
-    "preinstall": "babel src -d dist"
+    "prepublish": "babel src -d dist"
   },
   "keywords": [
     "wechat",
     "weixin",
+    "微信公众号",
     "微信",
-    "微信公众号"
+    "公众号"
   ],
   "author": "bukas",
   "license": "ISC",
@@ -23,5 +22,8 @@
   "devDependencies": {
     "babel-cli": "^6.22.2",
     "babel-preset-env": "^1.1.8"
+  },
+  "engines": {
+      "node": "^4.x"
   }
 }

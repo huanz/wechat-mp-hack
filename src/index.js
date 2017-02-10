@@ -1,6 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import events from 'events';
+import {
+    createHash
+} from 'crypto';
 import request from 'request';
 import WechatRequest from './util/request';
 import Config from './util/config';
@@ -11,7 +14,8 @@ export default class Wechat extends events {
         super();
 
         this.username = username;
-        this.pwd = pwd;
+        this.pwd = createHash('md5').update(pwd.substr(0, 16)).digest('hex');
+        this.data = {};
     }
     _startlogin() {
         return WechatRequest({
@@ -68,8 +72,8 @@ export default class Wechat extends events {
             }).then(body => {
                 let token = null;
                 if (body.base_resp.ret === 0 && (token = body.redirect_url.match(/token=(\d+)/))) {
-                    this.token = token[1];
-                    Log.info('登录成功，token=' + this.token);
+                    this.data.token = token[1];
+                    Log.info('登录成功，token=' + this.data.token);
                     resolve(token[1]);
                 } else if (body.base_resp.ret === -1) {
                     loginAction(resolve, reject);
@@ -80,20 +84,27 @@ export default class Wechat extends events {
         };
         return new Promise(loginAction);
     }
-    _wxdata() {
+    _wechatData() {
         return new Promise((resolve, reject) => {
-            WechatRequest.get(`${Config.api.home}?t=home/index&lang=zh_CN&token=${this.token}`, (e, r, body) => {
+            WechatRequest.get(`${Config.api.masssendpage}?t=mass/send&token=${this.data.token}`, (e, r, body) => {
                 if (e) {
                     reject(e);
                 } else {
                     let ticketMatch = body.match(/ticket:"(\w+)"/);
                     let userNameMatch = body.match(/user_name:"(\w+)"/);
+                    let massProtectMatch = body.match(/"protect_status":(\d+)/);
+                    let operationMatch = body.match(/operation_seq:\s*"(\d+)"/);
                     if (ticketMatch && userNameMatch) {
-                        this.wxdata = {
-                            ticket: ticketMatch[1],
-                            user_name: userNameMatch[1]
-                        };
-                        resolve(this.wxdata);
+                        this.data.ticket = ticketMatch[1];
+                        this.data.user_name = userNameMatch[1];
+                        if (operationMatch) {
+                            this.data.operation_seq = operationMatch[1];
+                        }
+                        if (massProtectMatch && (2 & massProtectMatch[1]) === 2) {
+                            // 群发保护
+                            this.data.mass_protect = 1;
+                        }
+                        resolve(this.data);
                     } else {
                         reject('解析wxdata失败');
                     }
@@ -103,13 +114,13 @@ export default class Wechat extends events {
     }
     login() {
         return new Promise((resolve, reject) => {
-            if (this.token) {
-                resolve(this.token);
+            if (this.data.token) {
+                resolve(this.data);
             } else {
                 this._startlogin().then(redirectUrl => {
                     this._checkLogin().then(() => {
                         this._doLogin(redirectUrl).then(() => {
-                            this._wxdata().then(resolve).catch(reject);
+                            this._wechatData().then(resolve).catch(reject);
                         }).catch(reject);
                     }).catch(reject);
                 }).catch(reject);
@@ -145,12 +156,12 @@ export default class Wechat extends events {
     }
     _operate_appmsg(wechatNews) {
         return WechatRequest({
-            url: `${Config.api.operate_appmsg}?t=ajax-response&sub=create&type=10&token=${this.token}`,
+            url: `${Config.api.operate_appmsg}?t=ajax-response&sub=create&type=10&token=${this.data.token}`,
             headers: {
-                'Referer': `${Config.api.appmsg}?t=media/appmsg_edit&action=edit&type=10&isMul=1&isNew=1&token=${this.token}`
+                'Referer': `${Config.api.appmsg}?t=media/appmsg_edit&action=edit&type=10&isMul=1&isNew=1&token=${this.data.token}`
             },
             form: Object.assign({
-                token: this.token,
+                token: this.data.token,
                 f: 'json',
                 ajax: 1,
                 random: Math.random(),
@@ -234,44 +245,54 @@ export default class Wechat extends events {
             let filename = path.join(Config.upload, Date.now() + '.png');
             let writeStream = fs.createWriteStream(filename);
             request(imgurl).pipe(writeStream).on('error', reject);
-            writeStream.on('finish', () => {
-                WechatRequest({
-                    url: `${Config.api.filetransfer}?action=upload_material&f=json&scene=1&writetype=doublewrite&groupid=1&ticket_id=${this.wxdata.user_name}&ticket=${this.wxdata.ticket}&svr_time=${Math.floor(Date.now()/1000)}&seq=1&token=${this.token}`,
-                    headers: {
-                        'Referer': `${Config.api.filepage}?type=2&begin=0&count=12&t=media/img_list&token=${this.token}`
-                    },
-                    formData: {
-                        file: fs.createReadStream(filename)
-                    }
-                }).then(body => {
-                    if (body.base_resp.ret === 0) {
-                        resolve({
-                            fileid: body.content,
-                            cdn_url: body.cdn_url
-                        });
-                    } else {
-                        reject(body);
-                    }
-                }).catch(reject);
-            });
+            writeStream.on('finish', () => this.localUpload(filename).then(resolve).catch(reject));
+        });
+    }
+    localUpload(filepath) {
+        return WechatRequest({
+            url: `${Config.api.filetransfer}?action=upload_material&f=json&scene=1&writetype=doublewrite&groupid=1&ticket_id=${this.data.user_name}&ticket=${this.data.ticket}&svr_time=${Math.floor(Date.now()/1000)}&seq=1&token=${this.data.token}`,
+            headers: {
+                'Referer': `${Config.api.filepage}?type=2&begin=0&count=12&t=media/img_list&token=${this.data.token}`
+            },
+            formData: {
+                file: fs.createReadStream(filepath)
+            }
+        }).then(body => {
+            if (body.base_resp.ret === 0) {
+                return {
+                    fileid: body.content,
+                    cdn_url: body.cdn_url
+                };
+            } else {
+                throw body;
+            }
         });
     }
     /**
      * @desc 群发
      */
     masssend(appmsgid) {
-        this.getticket().then(body => {
-            this.getuuid(body.ticket).then(uuid => {
-                let params = Object.assign({
-                    uuid: uuid
-                }, body);
-                this.checkuuid(params).then(res => {
-                    params.code = res.code;
-                    params.appmsgid = appmsgid;
-                    this.safesend(params);
-                }).catch(Log.error);
-            }).catch(Log.error);
-        }).catch(Log.error);
+        if (this.data.mass_protect) {
+            return new Promise((resolve, reject) => {
+                this.getticket().then(body => {
+                    this.getuuid(body.ticket).then(uuid => {
+                        let params = Object.assign({
+                            uuid: uuid
+                        }, body);
+                        this.checkuuid(params).then(res => {
+                            params.code = res.code;
+                            params.appmsgid = appmsgid;
+                            this.safesend(params).then(resolve).catch(reject);
+                        }).catch(reject);
+                    }).catch(reject);
+                }).catch(reject);
+            });
+        } else {
+            return this.safesend({
+                appmsgid: appmsgid,
+                operation_seq: this.data.operation_seq
+            });
+        }
     }
     /**
      * @desc 获取群发ticket
@@ -279,9 +300,9 @@ export default class Wechat extends events {
     getticket() {
         Log.info('获取群发ticket');
         return WechatRequest({
-            url: `${Config.api.safeassistant}?1=1&token=${this.token}`,
+            url: `${Config.api.safeassistant}?1=1&token=${this.data.token}`,
             form: {
-                token: this.token,
+                token: this.data.token,
                 f: 'json',
                 ajax: 1,
                 random: Math.random(),
@@ -302,9 +323,9 @@ export default class Wechat extends events {
     }
     getuuid(ticket) {
         return WechatRequest({
-            url: `${Config.api.safeqrconnect}?1=1&token=${this.token}`,
+            url: `${Config.api.safeqrconnect}?1=1&token=${this.data.token}`,
             form: {
-                token: this.token,
+                token: this.data.token,
                 f: 'json',
                 ajax: 1,
                 random: Math.random(),
@@ -325,9 +346,9 @@ export default class Wechat extends events {
     checkuuid(obj) {
         let douuid = (resolve, reject) => {
             WechatRequest({
-                url: `${Config.api.safeuuid}?timespam=${Date.now()}&token=${this.token}`,
+                url: `${Config.api.safeuuid}?timespam=${Date.now()}&token=${this.data.token}`,
                 form: {
-                    token: this.token,
+                    token: this.data.token,
                     f: 'json',
                     ajax: 1,
                     random: Math.random(),
@@ -358,10 +379,10 @@ export default class Wechat extends events {
         });
     }
     safesend(obj) {
-        WechatRequest({
-            url: `${Config.api.masssend}?t=ajax-response&token=${this.token}&req_need_vidsn=1&add_tx_video=1`,
+        return WechatRequest({
+            url: `${Config.api.masssend}?t=ajax-response&token=${this.data.token}&req_need_vidsn=1&add_tx_video=1`,
             form: {
-                token: this.token,
+                token: this.data.token,
                 f: 'json',
                 ajax: 1,
                 random: Math.random(),
@@ -379,13 +400,14 @@ export default class Wechat extends events {
                 operation_seq: obj.operation_seq,
                 req_id: this._getid(32),
                 req_time: Date.now(),
-                code: obj.code
+                code: obj.code || ''
             }
-        }).then(result => {
-            if (result.base_resp.ret === 0) {
-                Log.info('群发成功');
+        }).then(body => {
+            if (body.base_resp.ret === 0) {
+                return body;
             } else {
-                Log.error(result);
+                Log.error(body);
+                throw body;
             }
         });
     }
@@ -399,14 +421,19 @@ export default class Wechat extends events {
     }
     /**
      * @desc 二维码解析
+     * @param url{string}   远程图片地址/本地图片路径
      */
     qrdecode(url) {
         return new Promise((resolve, reject) => {
             let formData = {};
-            if(/^https?:\/\//.test(url)) {
+            if (/^https?:\/\//.test(url)) {
                 formData.url = url;
             } else {
-                formData.qrcode = fs.createReadStream(url);
+                try {
+                    formData.qrcode = fs.createReadStream(url);
+                } catch (error) {
+                    reject(error);
+                }
             }
             request({
                 method: 'POST',
