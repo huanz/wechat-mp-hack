@@ -16,7 +16,9 @@ const API = {
     safeassistant: `${BASEURL}/misc/safeassistant`,
     safeqrconnect: `${BASEURL}/safe/safeqrconnect`,
     safeqrcode: `${BASEURL}/safe/safeqrcode`,
-    safeuuid: `${BASEURL}/safe/safeuuid`
+    safeuuid: `${BASEURL}/safe/safeuuid`,
+    singlesend: `${BASEURL}/cgi-bin/singlesend`,
+    message: `${BASEURL}/cgi-bin/message`
 };
 
 const Config = {
