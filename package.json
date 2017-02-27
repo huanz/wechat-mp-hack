@@ -1,6 +1,6 @@
 {
   "name": "wechat-mp-hack",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "微信公众号接口，无需微信认证实现自动创建素材、自动群发图文消息",
   "main": "dist/index.js",
   "scripts": {

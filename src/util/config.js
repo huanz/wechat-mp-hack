@@ -18,7 +18,8 @@ const API = {
     safeqrcode: `${BASEURL}/safe/safeqrcode`,
     safeuuid: `${BASEURL}/safe/safeuuid`,
     singlesend: `${BASEURL}/cgi-bin/singlesend`,
-    message: `${BASEURL}/cgi-bin/message`
+    message: `${BASEURL}/cgi-bin/message`,
+    uploadimg2cdn: `${BASEURL}/cgi-bin/uploadimg2cdn`
 };
 
 const Config = {

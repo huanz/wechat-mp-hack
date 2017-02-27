@@ -148,32 +148,72 @@ export default class Wechat extends events {
                 return hasThumb;
             });
             if (uploadImgs.length) {
-                this.batchUpload(uploadImgs).then(results => {
-                    let wechatNews = postNews.map((item, index) => {
-                        Object.assign(item, results[index]);
-                        return item;
-                    });
-                    this._operate_appmsg(wechatNews).then(resolve).catch(reject);
+                this.parseNewsList(postNews).then(newsObj => {
+                    this._operate_appmsg(newsObj, postNews.length).then(resolve).catch(reject);
                 }).catch(reject);
             } else {
                 reject('至少有一篇新闻具有图片');
             }
         });
     }
-    _operate_appmsg(wechatNews) {
+    parseNewsList(newsList) {
+        return Promise.all(newsList.map((item, index) => this.parseNews(item, index))).then(paramArr => {
+            return Object.assign.apply(Object, paramArr);
+        });
+    }
+    parseNews(news, index) {
+        let pattern = /<img[^>]+src=['"]([^'"]+)['"]+/g;
+        let promiseArr = [];
+        let imgs = [];
+        let temp = null;
+        while((temp = pattern.exec(news.html)) !== null && imgs.indexOf(temp[1]) === -1 && !this.isLocalDomain(temp[1])) {
+            promiseArr.push(this.uploadimg2cdn(temp[1]));
+            imgs.push(temp[1]);
+        }
+        /**
+         * @desc 上传缩略图
+         */
+        promiseArr.push(this.uploadimg2cdn(news.thumb));
+
+        return Promise.all(promiseArr).then(urls => {
+            imgs.forEach((imgurl, i) => {
+                news.html = news.html.replace(new RegExp(imgurl, 'gi'), urls[i]);
+            });
+            news.cdn_url = urls[urls.length - 1];
+            return this._newsToMpParam(news, index);
+        })
+    }
+    isLocalDomain(url) {
+        let localReg = [
+            /^http(s)?:\/\/mmbiz\.qpic\.cn([\/?].*)*$/i,
+            /^http(s)?:\/\/mmbiz\.qlogo\.cn([\/?].*)*$/i,
+            /^http(s)?:\/\/m\.qpic\.cn([\/?].*)*$/i,
+            /^http(s)?:\/\/mmsns\.qpic\.cn([\/?].*)*$/i,
+            /^http(s)?:\/\/mp\.weixin\.qq\.com([\/?].*)*$/i,
+            /^http(s)?:\/\/(a|b)(\d)+\.photo\.store\.qq\.com([\/?].*)*$/i
+        ];
+        return localReg.some(pattern => pattern.test(url));
+    }
+    _operate_appmsg(wechatNews, count) {
+        let params = {
+            token: this.data.token,
+            f: 'json',
+            ajax: 1,
+            random: Math.random()
+        };
+        if (count) {
+            params.count = count;
+            Object.assign(params, wechatNews);
+        } else {
+            params.count = wechatNews.length;
+            Object.assign(params, this._transformToMpParam(wechatNews));
+        }
         return WechatRequest({
             url: `${Config.api.operate_appmsg}?t=ajax-response&sub=create&type=10&token=${this.data.token}`,
             headers: {
                 'Referer': `${Config.api.appmsg}?t=media/appmsg_edit&action=edit&type=10&isMul=1&isNew=1&token=${this.data.token}`
             },
-            form: Object.assign({
-                token: this.data.token,
-                f: 'json',
-                ajax: 1,
-                random: Math.random(),
-                count: wechatNews.length,
-                AppMsgId: '',
-            }, this._transformToMpParam(wechatNews))
+            form: params
         }).then(body => {
             if (body.base_resp.ret === 0) {
                 return body.appMsgId;
@@ -216,25 +256,30 @@ export default class Wechat extends events {
     _transformToMpParam(arr) {
         let obj = {};
         arr.forEach((item, index) => {
-            obj[`title${index}`] = item.title;
-            obj[`content${index}`] = item.html;
-            obj[`digest${index}`] = item.description;
-            obj[`fileid${index}`] = item.fileid; // 图片微信id
-            obj[`cdn_url${index}`] = item.cdn_url;
-            obj[`digest${index}`] = item.description;
-            obj[`sourceurl${index}`] = item.url;
-            obj[`show_cover_pic${index}`] = 0;
-            obj[`need_open_comment${index}`] = 1;
-            obj[`music_id${index}`] = '';
-            obj[`video_id${index}`] = '';
-            obj[`shortvideofileid${index}`] = '';
-            obj[`copyright_type${index}`] = '';
-            obj[`only_fans_can_comment${index}`] = '';
-            obj[`fee${index}`] = '';
-            obj[`voteid${index}`] = '';
-            obj[`voteismlt${index}`] = '';
-            obj[`ad_id${index}`] = '';
+            Object.assign(obj, this._newsToMpParam(item, index));
         });
+        return obj;
+    }
+    _newsToMpParam(item, index) {
+        let obj = {};
+        obj[`title${index}`] = item.title;
+        obj[`content${index}`] = item.html;
+        obj[`digest${index}`] = item.description;
+        obj[`fileid${index}`] = item.fileid || ''; // 图片微信id
+        obj[`cdn_url${index}`] = item.cdn_url;
+        obj[`digest${index}`] = item.description;
+        obj[`sourceurl${index}`] = item.url;
+        obj[`show_cover_pic${index}`] = 0;
+        obj[`need_open_comment${index}`] = 1;
+        obj[`music_id${index}`] = '';
+        obj[`video_id${index}`] = '';
+        obj[`shortvideofileid${index}`] = '';
+        obj[`copyright_type${index}`] = '';
+        obj[`only_fans_can_comment${index}`] = '';
+        obj[`fee${index}`] = '';
+        obj[`voteid${index}`] = '';
+        obj[`voteismlt${index}`] = '';
+        obj[`ad_id${index}`] = '';
         return obj;
     }
     /**
@@ -275,6 +320,24 @@ export default class Wechat extends events {
                     fileid: body.content,
                     cdn_url: body.cdn_url
                 };
+            } else {
+                throw body;
+            }
+        });
+    }
+    /**
+     * @desc 上传远程图片上传至cdn
+     */
+    uploadimg2cdn(imgurl) {
+        return WechatRequest({
+            url: `${Config.api.uploadimg2cdn}?token=${this.data.token}`,
+            form: {
+                imgurl: imgurl,
+                t: 'ajax-editor-upload-img'
+            }
+        }).then(body => {
+            if (body.errcode === 0) {
+                return body.url;
             } else {
                 throw body;
             }
