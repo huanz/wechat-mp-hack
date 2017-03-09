@@ -1,9 +1,21 @@
+import fs from 'fs';
+import path from 'path';
 import request from 'request';
+import FileCookieStore from 'tough-cookie-filestore';
 import Config from './config';
 import Log from './log';
 
-const j = request.jar();
-const r = request.defaults({
+const COOKIEFILE = path.join(__dirname, '..', '_data', 'cookies.json');
+
+let cookieStore = null;
+try {
+    cookieStore = new FileCookieStore(COOKIEFILE);
+} catch (error) {
+    fs.writeFileSync(COOKIEFILE, '');
+    cookieStore = new FileCookieStore(COOKIEFILE);
+}
+let j = request.jar(cookieStore);
+let r = request.defaults({
     method: 'POST',
     headers: {
         'Referer': Config.baseurl,
@@ -15,7 +27,9 @@ const r = request.defaults({
     jar: j,
     qs: {
         lang: 'zh_CN'
-    }
+    },
+    followAllRedirects: true,
+    followOriginalHttpMethod: true
 });
 
 const WechatRequest = (options) => {

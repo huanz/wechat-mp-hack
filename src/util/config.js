@@ -19,7 +19,8 @@ const API = {
     safeuuid: `${BASEURL}/safe/safeuuid`,
     singlesend: `${BASEURL}/cgi-bin/singlesend`,
     message: `${BASEURL}/cgi-bin/message`,
-    uploadimg2cdn: `${BASEURL}/cgi-bin/uploadimg2cdn`
+    uploadimg2cdn: `${BASEURL}/cgi-bin/uploadimg2cdn`,
+    verifycode: `${BASEURL}/cgi-bin/verifycode`
 };
 
 const Config = {

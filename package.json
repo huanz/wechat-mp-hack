@@ -1,10 +1,10 @@
 {
   "name": "wechat-mp-hack",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "微信公众号接口，无需微信认证实现自动创建素材、自动群发图文消息",
   "main": "dist/index.js",
   "scripts": {
-    "start": "babel-node ./run.js --debug",
+    "start": "babel-node ./run.js --inspect",
     "prepublish": "babel src -d dist"
   },
   "keywords": [
@@ -17,7 +17,8 @@
   "author": "bukas",
   "license": "ISC",
   "dependencies": {
-    "request": "^2.79.0"
+    "request": "^2.79.0",
+    "tough-cookie-filestore": "0.0.1"
   },
   "devDependencies": {
     "babel-cli": "^6.22.2",

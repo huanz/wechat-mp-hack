@@ -30,6 +30,7 @@ API.on('scan.send', (filepath) => {
 
 /**
  * @desc 登录公众号
+ * @param imgcode{string}    [可选]验证码
  */
 API.login().then((data) => {
     /**
@@ -116,6 +117,17 @@ API.login().then((data) => {
     API.singlesend('osl8HwPBTCsVbquNsnYbUfOQH8sM', '哈哈哈哈', 425131038).then(res => {
         console.log(res);
     }).catch(e => console.log(e));
+}).catch(error => {
+    if (error && error.base_resp && error.base_resp.ret === 200008) {
+        /**
+         * @desc 验证码图片
+         */
+        API.once('vcode', (filepath) => {
+            // 验证码图片地址
+            console.log(filepath);
+        });
+        API.login('ynhc');
+    }
 });
 
 /**

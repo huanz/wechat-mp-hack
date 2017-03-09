@@ -9,27 +9,45 @@ import WechatRequest from './util/request';
 import Config from './util/config';
 import Log from './util/log';
 
+const WECHATFILE = path.join(__dirname, '_data', 'wechat.json');
+
 export default class Wechat extends events {
     constructor(username, pwd) {
         super();
 
         this.username = username;
         this.pwd = createHash('md5').update(pwd.substr(0, 16)).digest('hex');
-        this.data = {};
+        this.islogin = false;
+        try {
+            let data = JSON.parse(fs.readFileSync(WECHATFILE));
+            this.data = data || {};
+        } catch (error) {
+            this.data = {};
+        }
     }
-    _startlogin() {
+    _startlogin(imgcode = '') {
         return WechatRequest({
             url: `${Config.api.bizlogin}?action=startlogin`,
             form: {
                 username: this.username,
                 pwd: this.pwd,
-                imgcode: '',
+                imgcode: imgcode,
                 f: 'json'
             }
         }).then(body => {
             if (body.base_resp.ret === 0) {
                 return Config.baseurl + body.redirect_url;
             } else {
+                // 200023 您输入的帐号或者密码不正确，请重新输入。
+                // 200008 验证码
+                if (body.base_resp.ret === 200008) {
+                    let filename = 'verifycode.png';
+                    let writeStream = fs.createWriteStream(filename);
+                    WechatRequest.get(`${Config.api.verifycode}?username=${this.username}&r=${Date.now()}`).pipe(writeStream);
+                    writeStream.on('finish', () => {
+                        this.emit('vcode', filename);
+                    });
+                }
                 throw body;
             }
         });
@@ -104,7 +122,11 @@ export default class Wechat extends events {
                             // 群发保护
                             this.data.mass_protect = 1;
                         }
+                        this.islogin = true;
                         resolve(this.data);
+                        fs.writeFile(WECHATFILE, JSON.stringify(this.data), function () {
+
+                        });
                     } else {
                         reject('解析wxdata失败');
                     }
@@ -112,18 +134,40 @@ export default class Wechat extends events {
             });
         });
     }
-    login() {
-        return new Promise((resolve, reject) => {
-            if (this.data.token) {
-                resolve(this.data);
-            } else {
-                this._startlogin().then(redirectUrl => {
-                    this._checkLogin().then(() => {
-                        this._doLogin(redirectUrl).then(() => {
-                            this._wechatData().then(resolve).catch(reject);
-                        }).catch(reject);
-                    }).catch(reject);
+    _loginstep(resolve, reject, imgcode) {
+        this._startlogin(imgcode).then(redirectUrl => {
+            this._checkLogin().then(() => {
+                this._doLogin(redirectUrl).then(() => {
+                    this._wechatData().then(resolve).catch(reject);
                 }).catch(reject);
+            }).catch(reject);
+        }).catch(reject);
+    }
+    login(imgcode) {
+        return new Promise((resolve, reject) => {
+            if (this.islogin) {
+                resolve(this.data);
+            } else if (this.data.token) {
+                let req = WechatRequest.get(Config.baseurl, (error, response, body) => {
+                    if (error) {
+                        this._loginstep(resolve, reject, imgcode);
+                    } else {
+                        let redirects = req._redirect.redirects;
+                        if (redirects && redirects.length) {
+                            let redirectUri = redirects[redirects.length - 1].redirectUri;
+                            if (/token=(\d+)/.test(redirectUri)) {
+                                this.islogin = true;
+                                resolve(this.data);
+                            } else {
+                                this._loginstep(resolve, reject, imgcode);
+                            }
+                        } else {
+                            this._loginstep(resolve, reject, imgcode);
+                        }
+                    }
+                });
+            } else {
+                this._loginstep(resolve, reject);
             }
         });
     }
