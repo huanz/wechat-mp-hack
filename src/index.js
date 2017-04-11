@@ -8,6 +8,7 @@ import request from 'request';
 import WechatRequest from './util/request';
 import Config from './util/config';
 import Log from './util/log';
+import {login} from './decorators/index';
 
 const WECHATFILE = path.join(__dirname, '_data', 'wechat.json');
 
@@ -210,7 +211,7 @@ export default class Wechat extends events {
         let promiseArr = [];
         let imgs = [];
         let temp = null;
-        while((temp = pattern.exec(news.html)) !== null && imgs.indexOf(temp[1]) === -1 && !this.isLocalDomain(temp[1])) {
+        while ((temp = pattern.exec(news.html)) !== null && imgs.indexOf(temp[1]) === -1 && !this.isLocalDomain(temp[1])) {
             promiseArr.push(this.uploadimg2cdn(temp[1]));
             imgs.push(temp[1]);
         }
@@ -581,6 +582,7 @@ export default class Wechat extends events {
      * @return  msgs[].type
      * @return  msgs[].wx_headimg_url   用户头像地址
      */
+    @login()
     message(count, day = 0) {
         return new Promise((resolve, reject) => {
             let url = `${Config.api.message}?t=message/list&count=${count}&token=${this.data.token}`;
@@ -590,7 +592,7 @@ export default class Wechat extends events {
                     reject(e);
                 } else {
                     try {
-                        let msgMatch = body.match(/{"msg_item":(\[[\s\S]+?\])}/);
+                        let msgMatch = body.match(/{"msg_item":(\[[\s\S]*?\])}/);
                         let msgs = JSON.parse(msgMatch[1]);
                         resolve(msgs);
                     } catch (error) {
