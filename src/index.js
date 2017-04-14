@@ -8,7 +8,9 @@ import request from 'request';
 import WechatRequest from './util/request';
 import Config from './util/config';
 import Log from './util/log';
-import {login} from './decorators/index';
+import {
+    login
+} from './decorators/index';
 
 const WECHATFILE = path.join(__dirname, '_data', 'wechat.json');
 
@@ -144,6 +146,11 @@ export default class Wechat extends events {
             }).catch(reject);
         }).catch(reject);
     }
+    /**
+     * @desc 登录公众号
+     * @param {string} imgcode - [可选]验证码
+     * @return {Promise<object>} data
+     */
     login(imgcode) {
         return new Promise((resolve, reject) => {
             if (this.islogin) {
@@ -173,15 +180,16 @@ export default class Wechat extends events {
         });
     }
     /**
-     * @desc 创建图文素材
-     * @param news{array}                   消息列表
-     * @param news[].title{string}          文章标题
-     * @param news[].thumb{string}          文章缩略图
-     * @param news[].description{string}    描述信息
-     * @param news[].html{string}           文章内容
-     * @param news[].url{string}            原文地址
-     * @return appMsgId{Promise}
+     * 创建图文素材
+     * @param {array} news - 消息列表
+     * @param {string} news[].title - 文章标题
+     * @param {string} news[].thumb - 文章缩略图
+     * @param {string} news[].description - 描述信息
+     * @param {string} news[].html - 文章内容
+     * @param {string} news[].url - 原文地址
+     * @return {Promise<string>} appMsgId
      */
+    @login
     operate_appmsg(news) {
         return new Promise((resolve, reject) => {
             let uploadImgs = [];
@@ -216,7 +224,7 @@ export default class Wechat extends events {
             imgs.push(temp[1]);
         }
         /**
-         * @desc 上传缩略图
+         * 上传缩略图
          */
         promiseArr.push(this.uploadimg2cdn(news.thumb));
 
@@ -295,7 +303,7 @@ export default class Wechat extends events {
         });
     }
     /**
-     * @desc 数组变成微信参数
+     * 数组变成微信参数
      * title html
      */
     _transformToMpParam(arr) {
@@ -328,16 +336,20 @@ export default class Wechat extends events {
         return obj;
     }
     /**
-     * @desc 批量上传远程图片至公众号
-     * @param arr{array}    远程图片地址
+     * 批量上传远程图片至公众号
+     * @param {array<string>} imgurls - 远程图片地址
+     * @return {Promise<array>}
      */
-    batchUpload(arr) {
-        return Promise.all(arr.map(imgurl => this.filetransfer(imgurl)));
+    @login
+    batchUpload(imgurls) {
+        return Promise.all(imgurls.map(imgurl => this.filetransfer(imgurl)));
     }
     /**
-     * @desc 上传单个远程图片至公众号
-     * @param imgurl{string}    远程图片地址
+     * 上传单个远程图片至公众号
+     * @param {string} imgurl - 远程图片地址
+     * @return {Promise<string>}
      */
+    @login
     filetransfer(imgurl) {
         return new Promise((resolve, reject) => {
             let filename = path.join(Config.upload, Date.now() + '.png');
@@ -347,9 +359,11 @@ export default class Wechat extends events {
         });
     }
     /**
-     * @desc 上传本地图片至公众号
-     * @param filepath{string}  本地图片地址
+     * 上传本地图片至公众号
+     * @param {string} filepath - 本地图片地址
+     * @return {Promise<object>}
      */
+    @login
     localUpload(filepath) {
         return WechatRequest({
             url: `${Config.api.filetransfer}?action=upload_material&f=json&scene=1&writetype=doublewrite&groupid=1&ticket_id=${this.data.user_name}&ticket=${this.data.ticket}&svr_time=${Math.floor(Date.now()/1000)}&seq=1&token=${this.data.token}`,
@@ -371,7 +385,9 @@ export default class Wechat extends events {
         });
     }
     /**
-     * @desc 上传远程图片上传至cdn
+     * 上传远程图片上传至cdn
+     * @param {string} imgurl - 远程图片地址
+     * @return {Promise<string>}
      */
     uploadimg2cdn(imgurl) {
         return WechatRequest({
@@ -389,10 +405,11 @@ export default class Wechat extends events {
         });
     }
     /**
-     * @desc    群发消息
-     * @param   appMsgId{string}
-     * @param   groupid{number}     分组id，默认-1 所有用户
+     * 群发消息
+     * @param {string} appMsgId
+     * @param {number} groupid - 分组id，默认-1 所有用户
      */
+    @login
     masssend(appmsgid, groupid = -1) {
         let params = {
             appmsgid: appmsgid,
@@ -417,7 +434,7 @@ export default class Wechat extends events {
         }
     }
     /**
-     * @desc 获取群发ticket
+     * 获取群发ticket
      */
     getticket() {
         Log.info('获取群发ticket');
@@ -534,11 +551,12 @@ export default class Wechat extends events {
         });
     }
     /**
-     * @desc    发文本消息给某个用户
-     * @param   tofakeid{string}    用户fakeid，可以在公众号后台singlesendpage页面url看到或者消息列表
-     * @param   msg{string}         消息内容
-     * @param   replyId{string}     回复消息id，可以消息列表看到，可选
+     * 发文本消息给某个用户
+     * @param {string} tofakeid - 用户fakeid，可以在公众号后台singlesendpage页面url看到或者消息列表
+     * @param {string} msg - 消息内容
+     * @param {string} replyId - 回复消息id，可以消息列表看到，可选
      */
+    @login
     singlesend(tofakeid, msg, replyId = '') {
         return WechatRequest({
             url: `${Config.api.singlesend}?t=ajax-response&f=json&token=${this.data.token}`,
@@ -563,26 +581,27 @@ export default class Wechat extends events {
         });
     }
     /**
-     * @desc 获取公众号消息列表
-     * @param   count{number}   消息条数
-     * @param   day{number|string}  今天：0 昨天：1 前天：2 更早：3 最近5天：7 已收藏消息：star，默认：0
-     * @return  msgs{Promise<Array<Object>>}
-     * @return  msgs[].content      消息内容
-     * @return  msgs[].date_time    消息时间
-     * @return  msgs[].fakeid       用户fakeid
-     * @return  msgs[].func_flag
-     * @return  msgs[].has_reply
-     * @return  msgs[].id           replyId
-     * @return  msgs[].is_vip_msg
-     * @return  msgs[].msg_status
-     * @return  msgs[].multi_item{Array}
-     * @return  msgs[].nick_name
-     * @return  msgs[].refuse_reason
-     * @return  msgs[].to_uin
-     * @return  msgs[].type
-     * @return  msgs[].wx_headimg_url   用户头像地址
+     * 获取公众号消息列表
+     * @param {number} count - 消息条数
+     * @param {number|string} day - 今天：0 昨天：1 前天：2 更早：3 最近5天：7 已收藏消息：star，默认：0
+     * @return {array<object>} msgs
+     * @return {string} msgs[].content - 消息内容
+     * @return {string} msgs[].date_time - 消息时间
+     * @return {string} msgs[].fakeid - 用户fakeid
+     * @return {number} msgs[].func_flag
+     * @return {number} msgs[].has_reply
+     * @return {number} msgs[].id - replyId
+     * @return {number} msgs[].is_vip_msg
+     * @return {number} msgs[].msg_status
+     * @return {array} msgs[].multi_item
+     * @return {string} msgs[].nick_name
+     * @return {string} msgs[].refuse_reason
+     * @return {string} msgs[].source
+     * @return {string} msgs[].to_uin
+     * @return {number} msgs[].type
+     * @return {string} msgs[].wx_headimg_url - 用户头像地址
      */
-    @login()
+    @login
     message(count, day = 0) {
         return new Promise((resolve, reject) => {
             let url = `${Config.api.message}?t=message/list&count=${count}&token=${this.data.token}`;
@@ -611,8 +630,9 @@ export default class Wechat extends events {
         return id;
     }
     /**
-     * @desc 二维码解析
-     * @param url{string}   远程图片地址/本地图片路径
+     * 二维码解析
+     * @param {string} url - 远程图片地址/本地图片路径
+     * @return {Promise<object>}
      */
     qrdecode(url) {
         return new Promise((resolve, reject) => {
