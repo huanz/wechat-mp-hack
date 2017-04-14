@@ -62,7 +62,9 @@ API.once('vcode', (filepath) => {
  * @param {string} imgcode - [可选]验证码
  * @return {Promise<object>} data
  */
-API.login()
+API.login().then(data => {
+    console.log(data);
+}).catch(console.error.bind(console));
 ```
 
 #### operate_appmsg
@@ -110,7 +112,7 @@ API.batchUpload(['http://wesbos.com/wp-content/uploads/2016/09/dead-zone.png']).
  * @param {string} imgurl - 远程图片地址
  */
 API.filetransfer('http://wesbos.com/wp-content/uploads/2016/09/dead-zone.png').then((result) => {
-	console.log(result);
+    console.log(result);
 });
 ```
 
@@ -124,7 +126,7 @@ API.filetransfer('http://wesbos.com/wp-content/uploads/2016/09/dead-zone.png').t
  * @param {string} filepath - 本地图片地址
  */
 API.localUpload('qrcode-safe.png').then((result) => {
-	console.log(result);
+    console.log(result);
 });
 ```
 
