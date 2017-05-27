@@ -389,6 +389,7 @@ export default class Wechat extends events {
      * @param {string} imgurl - 远程图片地址
      * @return {Promise<string>}
      */
+    @login
     uploadimg2cdn(imgurl) {
         return WechatRequest({
             url: `${Config.api.uploadimg2cdn}?token=${this.data.token}`,
