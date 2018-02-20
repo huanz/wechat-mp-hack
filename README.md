@@ -67,6 +67,84 @@ API.login().then(data => {
 }).catch(console.error.bind(console));
 ```
 
+#### appmsg
+
+获取图文/视频素材列表
+
+```javascript
+/**
+ * 获取图文/视频素材列表
+ * @param {number} type - 消息类型：图文消息-10 视频消息-15 默认-10
+ * @param {number} begin - 从第几条开始 默认-0
+ * @param {number} count - 返回条数 默认-10
+ * @return {Promise<array>} - 素材列表
+ * @return {number} [].app_id - 素材id appMsgId
+ * @return {string} [].author - 作者
+ * @return {string} [].create_time - 创建时间，单位秒
+ * @return {number} [].data_seq
+ * @return {string} [].digest - 素材描述信息
+ * @return {number} [].file_id
+ * @return {string} [].img_url - 图片地址
+ * @return {number} [].is_illegal
+ * @return {number} [].is_sync_top_stories
+ * @return {array} [].multi_item - 素材资源列表（一个素材下面有多个文章）
+ * @return {string} [].multi_item[].author - 文章作者
+ * @return {string} [].multi_item[].author_appid
+ * @return {number} [].multi_item[].can_reward - 文章是否可打赏，0否
+ * @return {string} [].multi_item[].cdn_url - 图片/视频地址
+ * @return {string} [].multi_item[].cdn_url_back
+ * @return {number} [].multi_item[].cover - 封面图片地址
+ * @return {string} [].multi_item[].digest - 文章描述
+ * @return {number} [].multi_item[].file_id
+ * @return {string} [].multi_item[].free_content
+ * @return {number} [].multi_item[].is_new_video
+ * @return {number} [].multi_item[].need_open_comment
+ * @return {boolean} [].multi_item[].only_fans_can_comment
+ * @return {string} [].multi_item[].ori_white_list
+ * @return {number} [].multi_item[].review_status
+ * @return {number} [].multi_item[].reward_money
+ * @return {string} [].multi_item[].reward_wording
+ * @return {number} [].multi_item[].seq
+ * @return {number} [].multi_item[].show_cover_pic
+ * @return {number} [].multi_item[].smart_product
+ * @return {string} [].multi_item[].source_url - 原文地址
+ * @return {string} [].multi_item[].title - 文章标题
+ * @return {array<string>} [].multi_item[].tags - 文章标签
+*/
+API.appmsg().then((items) => {
+    console.log(items);
+}).catch(console.error.bind(console));
+```
+
+#### filepage
+
+获取图片/语音素材列表
+
+```javascript
+/**
+ * 获取图片/语音素材列表
+ * @param {number} type - 素材类型：图片素材-2 语音素材-3 默认-2
+ * @param {number} begin - 从第几条开始 默认-0
+ * @param {number} count - 返回条数 默认-10
+ * @param {number} group_id - 图片素材专用，分组id 全部图片-0 未分组-1 文章配图-3 或者其它你自己新建的分组id
+ * @return {Promise<array>} - 素材列表
+ * @return {string} [].cdn_url - 资源地址
+ * @return {number} [].file_id
+ * @return {number} [].group_id - 分组id
+ * @return {string} [].img_format - 图片类型：png...
+ * @return {string} [].name - 资源名称，如：1488631877698.png
+ * @return {number} [].seq
+ * @return {string} [].size - 资源大小，如：749.4	K
+ * @return {number} [].type
+ * @return {number} [].update_time - 单位：秒
+ * @return {string} [].video_cdn_id
+ * @return {string} [].video_thumb_cdn_url
+*/
+API.filepage().then((files) => {
+    console.log(files);
+}).catch(console.error.bind(console)); 
+```
+
 #### operate_appmsg
 
 创建图文素材
