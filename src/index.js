@@ -28,7 +28,7 @@ export default class Wechat extends events {
             this.data = {};
         }
     }
-    _startlogin(imgcode = '') {
+    startlogin(imgcode = '') {
         return WechatRequest({
             url: `${Config.api.bizlogin}?action=startlogin`,
             form: {
@@ -39,34 +39,29 @@ export default class Wechat extends events {
             }
         }).then(body => {
             if (body.base_resp.ret === 0) {
-                return Config.baseurl + body.redirect_url;
+                return this.login_qrcode();
             } else {
                 // 200023 您输入的帐号或者密码不正确，请重新输入。
                 // 200008 验证码
                 if (body.base_resp.ret === 200008) {
-                    let filename = 'verifycode.png';
-                    let writeStream = fs.createWriteStream(filename);
-                    WechatRequest.get(`${Config.api.verifycode}?username=${this.username}&r=${Date.now()}`).pipe(writeStream);
-                    writeStream.on('finish', () => {
-                        this.emit('vcode', filename);
-                    });
+                    this.login_vcode();
                 }
                 throw body;
             }
         });
     }
-    _checkLogin() {
-        const dologin = (resolve, reject) => {
-            WechatRequest.getJSON(`${Config.api.loginqrcode}?action=ask&random=${Math.random()}`).then(body => {
-                if (body.status === 1) {
-                    resolve(body);
-                } else {
-                    setTimeout(() => {
-                        dologin(resolve, reject);
-                    }, 3000);
-                }
-            }).catch(reject);
-        };
+    login_vcode() {
+        return new Promise((resolve, reject) => {
+            let filename = 'verifycode.png';
+            let writeStream = fs.createWriteStream(filename);
+            WechatRequest.get(`${Config.api.verifycode}?username=${this.username}&r=${Date.now()}`).pipe(writeStream).on('error', reject);
+            writeStream.on('finish', () => {
+                this.emit('vcode', filename);
+                resolve(filename);
+            });
+        });
+    }
+    login_qrcode() {
         return new Promise((resolve, reject) => {
             let filename = 'qrcode-login.png';
             let writeStream = fs.createWriteStream(filename);
@@ -74,17 +69,28 @@ export default class Wechat extends events {
             writeStream.on('finish', () => {
                 this.emit('scan.login', filename);
                 Log.info('请扫描二维码确认登录！');
-                dologin(resolve, reject);
+                resolve(filename);
             });
-        });
+        })
     }
-    _doLogin(referer) {
+    checkLogin() {
+        const chklogin = (resolve, reject) => {
+            WechatRequest.getJSON(`${Config.api.loginqrcode}?action=ask&random=${Math.random()}`).then(body => {
+                if (body.status === 1) {
+                    resolve(body);
+                } else {
+                    setTimeout(() => {
+                        chklogin(resolve, reject);
+                    }, 3000);
+                }
+            }).catch(reject);
+        };
+        return new Promise(chklogin);
+    }
+    doLogin() {
         let loginAction = (resolve, reject) => {
             WechatRequest({
                 url: `${Config.api.bizlogin}?action=login`,
-                headers: {
-                    'Referer': referer
-                },
                 form: {
                     f: 'json',
                     ajax: 1,
@@ -127,9 +133,7 @@ export default class Wechat extends events {
                         }
                         this.islogin = true;
                         resolve(this.data);
-                        fs.writeFile(WECHATFILE, JSON.stringify(this.data), function () {
-
-                        });
+                        fs.writeFile(WECHATFILE, JSON.stringify(this.data), function () {});
                     } else {
                         reject('解析wxdata失败');
                     }
@@ -137,28 +141,17 @@ export default class Wechat extends events {
             });
         });
     }
-    _loginstep(resolve, reject, imgcode) {
-        this._startlogin(imgcode).then(redirectUrl => {
-            this._checkLogin().then(() => {
-                this._doLogin(redirectUrl).then(() => {
-                    this._wechatData().then(resolve).catch(reject);
-                }).catch(reject);
-            }).catch(reject);
-        }).catch(reject);
+    loginstep() {
+        return this.checkLogin().then(() => this.doLogin().then(() => this._wechatData()));
     }
-    /**
-     * @desc 登录公众号
-     * @param {string} imgcode - [可选]验证码
-     * @return {Promise<object>} data
-     */
-    login(imgcode) {
+    loginchk() {
         return new Promise((resolve, reject) => {
             if (this.islogin) {
                 resolve(this.data);
             } else if (this.data.token) {
                 let req = WechatRequest.get(Config.baseurl, (error, response, body) => {
                     if (error) {
-                        this._loginstep(resolve, reject, imgcode);
+                        reject(error);
                     } else {
                         let redirects = req._redirect.redirects;
                         if (redirects && redirects.length) {
@@ -167,16 +160,30 @@ export default class Wechat extends events {
                                 this.islogin = true;
                                 resolve(this.data);
                             } else {
-                                this._loginstep(resolve, reject, imgcode);
+                                reject();
                             }
                         } else {
-                            this._loginstep(resolve, reject, imgcode);
+                            reject();
                         }
                     }
                 });
             } else {
-                this._loginstep(resolve, reject);
+                reject();
             }
+        });
+    }
+    /**
+     * @desc 登录公众号
+     * @param {string} imgcode - [可选]验证码
+     * @return {Promise<object>} data
+     */
+    login(imgcode) {
+        return new Promise((resolve, reject) => {
+            this.loginchk().then(resolve).catch(() => {
+                this.startlogin(imgcode).then(() => {
+                    this.loginstep().then(resolve).catch(reject);
+                }).catch(reject);
+            });
         });
     }
     /**
@@ -187,13 +194,17 @@ export default class Wechat extends events {
      * @return {Promise<array>} - 素材列表
      * @return {number} [].app_id - 素材id appMsgId
      * @return {string} [].author - 作者
-     * @return {string} [].create_time - 创建时间，单位秒
-     * @return {number} [].data_seq
+     * @return {string} [].title - 标题
      * @return {string} [].digest - 素材描述信息
-     * @return {number} [].file_id
      * @return {string} [].img_url - 图片地址
+     * @return {number} [].file_id
      * @return {number} [].is_illegal
      * @return {number} [].is_sync_top_stories
+     * @return {number} [].data_seq
+     * @return {number} [].seq
+     * @return {number} [].show_cover_pic
+     * @return {string} [].create_time - 创建时间，单位秒
+     * @return {string} [].update_time
      * @return {array} [].multi_item - 素材资源列表（一个素材下面有多个文章）
      * @return {string} [].multi_item[].author - 文章作者
      * @return {string} [].multi_item[].author_appid
@@ -496,6 +507,7 @@ export default class Wechat extends events {
      * @param {number} itemidx - 文章在图文素材中的索引，从1开始 默认: 1
      * @return {Promise<string>} - 文章临时预览链接
      */
+    @login
     preview_post(appmsgid, itemidx = 1) {
         return WechatRequest.getJSON(`${Config.api.appmsg}?action=get_temp_url&appmsgid=${appmsgid}&itemidx=${itemidx}&token=${this.data.token}`).then(body => {
             if (body.base_resp.ret === 0) {

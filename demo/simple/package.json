@@ -1,0 +1,17 @@
+{
+  "name": "simple",
+  "version": "1.0.0",
+  "description": "wechat-mp-hack demo",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "bukas",
+  "license": "ISC",
+  "dependencies": {
+    "wechat-mp-hack": "^1.1.1"
+  },
+  "engines": {
+    "node": "^8.x"
+  }
+}

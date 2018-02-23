@@ -1,0 +1,20 @@
+{
+  "name": "demo",
+  "version": "1.0.0",
+  "description": "wechat-mp-hack demo",
+  "main": "index.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "keywords": [],
+  "author": "bukas",
+  "license": "ISC",
+  "dependencies": {
+    "co-wechat": "^2.3.0",
+    "koa": "^2.5.0",
+    "wechat-mp-hack": "^1.1.1"
+  },
+  "engines": {
+    "node": "^8.x"
+  }
+}

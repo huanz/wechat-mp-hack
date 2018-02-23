@@ -67,6 +67,19 @@ API.login().then(data => {
 }).catch(console.error.bind(console));
 ```
 
+#### loginchk
+
+检测是否已经登录
+
+```javascript
+try {
+    let islogin = await API.loginchk();
+    console.log('已登录');
+} catch(e) {
+    console.log('未登录');
+}
+```
+
 #### appmsg
 
 获取图文/视频素材列表
