@@ -20,7 +20,7 @@ let r = request.defaults({
     headers: {
         'Referer': Config.baseurl,
         'Host': Config.host,
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.95 Safari/537.36',
+        'User-Agent': Config.userAgent,
         'X-Requested-With': 'XMLHttpRequest'
     },
     json: true,
@@ -52,7 +52,11 @@ WechatRequest.get = (...options) => {
 WechatRequest.getJSON = (url, options) => {
     return WechatRequest(Object.assign({
         method: 'GET',
-        url: url
+        url: url,
+        qs: {
+            f: 'json',
+            ajax: 1
+        }
     }, options));
 };
 

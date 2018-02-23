@@ -202,6 +202,9 @@ API.filetransfer('http://wesbos.com/wp-content/uploads/2016/09/dead-zone.png').t
 /**
  * 上传本地图片至公众号
  * @param {string} filepath - 本地图片地址
+ * @return {Promise<object>} res
+ * @return {number} res.fileid - 资源id
+ * @return {string} res.cdn_url - 资源链接地址
  */
 API.localUpload('qrcode-safe.png').then((result) => {
     console.log(result);
@@ -216,8 +219,40 @@ API.localUpload('qrcode-safe.png').then((result) => {
 /**
  * 上传远程图片上传至cdn
  * @param {string} imgurl - 远程图片地址
- * @return {Promise<string>}
+ * @return {Promise<string>} - 微信cdn资源地址
  */
+```
+
+#### preview_post
+
+获取图文素材文章临时预览链接
+
+```javascript
+/**
+ * 获取图文素材文章临时预览链接
+ * @param {number} appmsgid - 图文素材id
+ * @param {number} itemidx - 文章在图文素材中的索引，从1开始 默认: 1
+ * @return {Promise<string>} - 文章临时预览链接
+ */
+API.preview_post(100000126, 2).then(post_url => {
+    console.log(post_url);
+}).catch(console.error.bind(console));
+```
+
+#### preview_appmsg
+
+预览群发消息
+
+```javascript
+/**
+ * 预览群发消息
+ * @param {string} username - 预览人微信号/QQ号/手机号
+ * @param {number|string} content - 预览内容，图文消息-appmsgid 文字-content 图片/语音/视频-fileid
+ * @param {number} type - 消息类型：图文消息-10 文字-1 图片-2 语音-3 视频-15 默认-10
+ */
+API.preview_appmsg('Zaker-yhz', 100000126).then(res => {
+    console.log('预览发送成功');
+}).catch(console.error.bind(console));
 ```
 
 #### masssend

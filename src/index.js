@@ -57,7 +57,7 @@ export default class Wechat extends events {
     }
     _checkLogin() {
         const dologin = (resolve, reject) => {
-            WechatRequest.getJSON(`${Config.api.loginqrcode}?action=ask&f=json&ajax=1&random=${Math.random()}`).then(body => {
+            WechatRequest.getJSON(`${Config.api.loginqrcode}?action=ask&random=${Math.random()}`).then(body => {
                 if (body.status === 1) {
                     resolve(body);
                 } else {
@@ -220,7 +220,7 @@ export default class Wechat extends events {
      */
     @login
     appmsg(type = 10, begin = 0, count = 10) {
-        return WechatRequest.getJSON(`${Config.api.appmsg}?begin=${begin}&count=${count}&type=${type}&token=${this.data.token}&action=${type === 15 ? 'list_video' : 'list_card'}&f=json`).then(body => {
+        return WechatRequest.getJSON(`${Config.api.appmsg}?begin=${begin}&count=${count}&type=${type}&token=${this.data.token}&action=${type === 15 ? 'list_video' : 'list_card'}`).then(body => {
             if (body.base_resp.ret === 0) {
                 return body.app_msg_info.item;
             } else {
@@ -249,7 +249,7 @@ export default class Wechat extends events {
      */
     @login
     filepage(type = 2, begin = 0, count = 10, group_id = 0) {
-        return WechatRequest.getJSON(`${Config.api.filepage}?begin=${begin}&count=${count}&type=${type}&token=${this.data.token}&group_id=${group_id}&f=json`).then(body => {
+        return WechatRequest.getJSON(`${Config.api.filepage}?begin=${begin}&count=${count}&type=${type}&token=${this.data.token}&group_id=${group_id}`).then(body => {
             if (body.base_resp.ret === 0) {
                 return body.page_info.file_item;
             } else {
@@ -349,31 +349,7 @@ export default class Wechat extends events {
             if (body.base_resp.ret === 0) {
                 return body.appMsgId;
             } else {
-                let errorMap = {
-                    '-206': '目前，服务负荷过大，请稍后重试。',
-                    '-200': '登录态超时，请重新登录。',
-                    '-99': '内容超出字数，请调整',
-                    '-1': '系统错误，请注意备份内容后重试',
-                    '-2': '参数错误，请注意备份内容后重试',
-                    '-5': '服务错误，请注意备份内容后重试。',
-                    '10801': '标题不能有违反公众平台协议、相关法律法规和政策的内容，请重新编辑。',
-                    '10802': '作者不能有违反公众平台协议、相关法律法规和政策的内容，请重新编辑。',
-                    '10803': '敏感链接，请重新添加。',
-                    '10804': '摘要不能有违反公众平台协议、相关法律法规和政策的内容，请重新编辑。',
-                    '10806': '正文不能有违反公众平台协议、相关法律法规和政策的内容，请重新编辑。',
-                    '64506': '保存失败,链接不合法',
-                    '64507': '内容不能包含链接，请调整',
-                    '64508': '查看原文链接可能具备安全风险，请检查',
-                    '64509': '正文中不能包含超过3个视频，请重新编辑正文后再保存。',
-                    '64510': '内容不能包含语音，请调整',
-                    '64511': '内容不能包多个语音，请调整',
-                    '64512': '文章中语音错误,请使用语音添加按钮重新添加。',
-                    '64513': '请从正文中选择封面，再尝试保存。',
-                    '64514': '你没有权限使用话题卡片功能',
-                    '64550': '请勿插入不合法的已群发的图文消息链接',
-                    '200002': '参数错误，请注意备份内容后重试'
-                };
-                let msg = errorMap[body.base_resp.ret] || '';
+                let msg = Log.msg(body.base_resp.ret);
                 Log.error(msg);
                 body.msg = msg;
                 throw body;
@@ -439,7 +415,9 @@ export default class Wechat extends events {
     /**
      * 上传本地图片至公众号
      * @param {string} filepath - 本地图片地址
-     * @return {Promise<object>}
+     * @return {Promise<object>} res
+     * @return {number} res.fileid - 资源id
+     * @return {string} res.cdn_url - 资源链接地址
      */
     @login
     localUpload(filepath) {
@@ -465,7 +443,7 @@ export default class Wechat extends events {
     /**
      * 上传远程图片上传至cdn
      * @param {string} imgurl - 远程图片地址
-     * @return {Promise<string>}
+     * @return {Promise<string>} - 微信cdn资源地址
      */
     @login
     uploadimg2cdn(imgurl) {
@@ -511,6 +489,59 @@ export default class Wechat extends events {
             params.operation_seq = this.data.operation_seq;
             return this.safesend(params);
         }
+    }
+    /**
+     * 获取图文素材文章临时预览链接
+     * @param {number} appmsgid - 图文素材id
+     * @param {number} itemidx - 文章在图文素材中的索引，从1开始 默认: 1
+     * @return {Promise<string>} - 文章临时预览链接
+     */
+    preview_post(appmsgid, itemidx = 1) {
+        return WechatRequest.getJSON(`${Config.api.appmsg}?action=get_temp_url&appmsgid=${appmsgid}&itemidx=${itemidx}&token=${this.data.token}`).then(body => {
+            if (body.base_resp.ret === 0) {
+                return body.temp_url;
+            } else {
+                throw body;
+            }
+        });
+    }
+    /**
+     * 预览群发消息
+     * @param {string} username - 预览人微信号/QQ号/手机号
+     * @param {number|string} content - 预览内容，图文消息-appmsgid 文字-content 图片/语音/视频-fileid
+     * @param {number} type - 消息类型：图文消息-10 文字-1 图片-2 语音-3 视频-15 默认-10
+     */
+    @login
+    preview_appmsg(username, content, type = 10) {
+        let params = {
+            token: this.data.token,
+            f: 'json',
+            ajax: 1,
+            random: Math.random(),
+            type: type,
+            preusername: username,
+            is_preview: 1
+        };
+        if (type === 10) {
+            params.appmsgid = content;
+        } else if (type === 1) {
+            params.content = content;
+        } else {
+            params.fileid = content;
+        }
+        return WechatRequest({
+            url: `${Config.api.operate_appmsg}?t=ajax-appmsg-preview&token=${this.data.token}&sub=preview&type=${type}`,
+            form: params
+        }).then(body => {
+            if (body.base_resp.ret === 0) {
+                return body;
+            } else{
+                let msg = Log.msg(body.base_resp.ret);
+                body.base_resp.err_msg = msg;
+                body.msg = msg;
+                throw body;
+            }
+        });
     }
     /**
      * 获取群发ticket
@@ -732,7 +763,7 @@ export default class Wechat extends events {
                     'Host': 'tool.oschina.net',
                     'Referer': 'http://tool.oschina.net/qr?type=2',
                     'Origin': 'http://tool.oschina.net',
-                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36',
+                    'User-Agent': Config.userAgent,
                     'Upgrade-Insecure-Requests': 1
                 },
                 json: true,
