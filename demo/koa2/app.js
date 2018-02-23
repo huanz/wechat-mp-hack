@@ -1,5 +1,5 @@
 const Koa = require('koa');
-const Wechat = require('wechat');
+const Wechat = require('co-wechat');
 const WechatHack = require('wechat-mp-hack');
 
 const Config = {
