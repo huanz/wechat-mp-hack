@@ -476,12 +476,14 @@ export default class Wechat extends events {
      * 群发消息
      * @param {string} appMsgId
      * @param {number} groupid - 分组id，默认-1 所有用户
+     * @param {number} send_time - 定时群发，默认-0 不定时群发  定时群发设置定时时间戳（单位秒）
      */
     @login
-    masssend(appmsgid, groupid = -1) {
+    masssend(appmsgid, groupid = -1, send_time = 0) {
         let params = {
             appmsgid: appmsgid,
-            groupid: groupid
+            groupid: groupid,
+            send_time: send_time
         };
         if (this.data.mass_protect) {
             return new Promise((resolve, reject) => {
@@ -641,14 +643,16 @@ export default class Wechat extends events {
     }
     safesend(obj) {
         return WechatRequest({
-            url: `${Config.api.masssend}?t=ajax-response&token=${this.data.token}&req_need_vidsn=1&add_tx_video=1`,
+            url: `${Config.api.masssend}?t=ajax-response&token=${this.data.token}${obj.send_time ? `&action=time_send${obj.send_time}` : ''}`,
             form: {
                 token: this.data.token,
                 f: 'json',
                 ajax: 1,
                 random: Math.random(),
+                smart_product: 0,
                 type: 10,
                 appmsgid: obj.appmsgid,
+                send_time: obj.send_time,
                 cardlimit: 1,
                 sex: 0,
                 groupid: obj.groupid,

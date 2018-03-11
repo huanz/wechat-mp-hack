@@ -84,19 +84,44 @@ const ERROR_MAP = {
     '65101': '图文模版数量已达到上限，请删除后再操作',
     '64560': '请勿插入历史图文消息页链接',
     '64561': '请勿插入mp.weixin.qq.com域名下的非图文消息链接',
-    '64562': '请勿插入非mp.weixin.qq.com域名的链接'
+    '64562': '请勿插入非mp.weixin.qq.com域名的链接',
+    '67016': '视频还在审核中，若审核失败则将无法播放',
+    '67015': '视频已被下架或删除，无法播放，请重新选择',
+    '67012': '设置失败，定时时间与已有互选广告订单时间冲突',
+    '67013': '设置失败，定时时间超过卡券有效期',
+    '200013': '操作太频繁，请稍后再试',
+    '67014': '该时刻定时消息过多，请选择其他时刻',
+    '67011': '设置的定时群发时间错误，请重新选择',
+    '64004': '今天的群发数量已到，无法群发或剩余定时群发数量不足',
+    '67008': '消息中可能含有具备安全风险的链接，请检查',
+    '200008': '请输入验证码',
+    '14002': '没有“审核通过”的门店。确认有至少一个“审核通过”的门店后可进行卡券投放。',
+    '200001': '文章包含的语音已被删除，请重新添加。',
+    '14003': '投放用户缺少测试权限，请先设置白名单',
+    '67010': '本月发表付费文章已达10篇'
 };
+
+const msg = (code) => {
+    return ERROR_MAP[code] || '系统繁忙，请稍后重试';
+};
+
+const userMsg = (e) => {
+    if (typeof e === 'object' && typeof e.base_resp === 'object') {
+        e.base_resp.msg = msg(e.base_resp.ret);
+    }
+    return e;
+}
 
 const Log = {
     info(e) {
-        console.log(`\x1b[34m${JSON.stringify(e)}\x1b[0m`);
+        console.log(`\x1b[34m${JSON.stringify(userMsg(e))}\x1b[0m`);
     },
     error(e) {
-        console.error(`\x1b[31m${JSON.stringify(e)}\x1b[0m`);
+        console.error(`\x1b[31m${JSON.stringify(userMsg(e))}\x1b[0m`);
     },
-    msg(code) {
-        return ERROR_MAP[code] || '系统繁忙，请稍后重试';
-    }
+    msg
 };
+
+
 
 export default Log;
