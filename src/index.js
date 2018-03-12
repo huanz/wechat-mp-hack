@@ -643,7 +643,7 @@ export default class Wechat extends events {
     }
     safesend(obj) {
         return WechatRequest({
-            url: `${Config.api.masssend}?t=ajax-response&token=${this.data.token}${obj.send_time ? `&action=time_send${obj.send_time}` : ''}`,
+            url: `${Config.api.masssend}?t=ajax-response&token=${this.data.token}${obj.send_time ? '&action=time_send' : ''}`,
             form: {
                 token: this.data.token,
                 f: 'json',
