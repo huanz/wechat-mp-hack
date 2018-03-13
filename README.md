@@ -276,7 +276,7 @@ API.preview_appmsg('Zaker-yhz', 100000126).then(res => {
 /**
  * 群发消息
  * @param {string} appMsgId
- * @param {number} groupid - 分组id，默认-1 所有用户
+ * @param {number} groupid - 分组id，默认-(-1) 所有用户
  * @param {number} send_time - 定时群发，默认-0 不定时群发  定时群发设置定时时间戳（单位秒）
  */
 API.masssend(appMsgId).then(() => {
