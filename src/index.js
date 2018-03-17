@@ -276,10 +276,11 @@ export default class Wechat extends events {
      * @param {string} news[].description - 描述信息
      * @param {string} news[].html - 文章内容
      * @param {string} news[].url - 原文地址
+     * @param {number} [appMsgId] - 图文素材id，传此字段表示更新图文素材
      * @return {Promise<string>} appMsgId
      */
     @login
-    operate_appmsg(news) {
+    operate_appmsg(news, appMsgId) {
         return new Promise((resolve, reject) => {
             let uploadImgs = [];
             let postNews = news.filter((item) => {
@@ -291,7 +292,7 @@ export default class Wechat extends events {
             });
             if (uploadImgs.length) {
                 this.parseNewsList(postNews).then(newsObj => {
-                    this._operate_appmsg(newsObj, postNews.length).then(resolve).catch(reject);
+                    this._operate_appmsg(newsObj, postNews.length, appMsgId).then(resolve).catch(reject);
                 }).catch(reject);
             } else {
                 reject('至少有一篇新闻具有图片');
@@ -336,13 +337,16 @@ export default class Wechat extends events {
         ];
         return localReg.some(pattern => pattern.test(url));
     }
-    _operate_appmsg(wechatNews, count) {
+    _operate_appmsg(wechatNews, count, appMsgId) {
         let params = {
             token: this.data.token,
             f: 'json',
             ajax: 1,
             random: Math.random()
         };
+        if (appMsgId) {
+            params.AppMsgId = appMsgId;
+        }
         if (count) {
             params.count = count;
             Object.assign(params, wechatNews);
@@ -351,7 +355,7 @@ export default class Wechat extends events {
             Object.assign(params, this._transformToMpParam(wechatNews));
         }
         return WechatRequest({
-            url: `${Config.api.operate_appmsg}?t=ajax-response&sub=create&type=10&token=${this.data.token}`,
+            url: `${Config.api.operate_appmsg}?t=ajax-response&sub=${appMsgId ? 'update' : 'create'}&type=10&token=${this.data.token}`,
             headers: {
                 'Referer': `${Config.api.appmsg}?t=media/appmsg_edit&action=edit&type=10&isMul=1&isNew=1&token=${this.data.token}`
             },
@@ -474,17 +478,24 @@ export default class Wechat extends events {
     }
     /**
      * 群发消息
-     * @param {string} appMsgId
+     * @param {number|string} appmsgid - 消息内容，图文消息-appmsgid 文字-文字内容 图片/语音/视频-fileid
      * @param {number} groupid - 分组id，默认-1 所有用户
      * @param {number} send_time - 定时群发，默认-0 不定时群发  定时群发设置定时时间戳（单位秒）
+     * @param {number} type - 消息类型：图文消息-10 文字-1 图片-2 语音-3 视频-15 默认-10
      */
     @login
-    masssend(appmsgid, groupid = -1, send_time = 0) {
+    masssend(appmsgid, groupid = -1, send_time = 0, type = 10) {
         let params = {
-            appmsgid: appmsgid,
             groupid: groupid,
             send_time: send_time
         };
+        if (type === 10) {
+            params.appmsgid = appmsgid;
+        } else if (type === 1) {
+            params.content = appmsgid;
+        } else {
+            params.fileid = appmsgid;
+        }
         if (this.data.mass_protect) {
             return new Promise((resolve, reject) => {
                 this.getticket().then(body => {
@@ -522,7 +533,7 @@ export default class Wechat extends events {
     /**
      * 预览群发消息
      * @param {string} username - 预览人微信号/QQ号/手机号
-     * @param {number|string} content - 预览内容，图文消息-appmsgid 文字-content 图片/语音/视频-fileid
+     * @param {number|string} content - 预览内容，图文消息-appmsgid 文字-文字内容 图片/语音/视频-fileid
      * @param {number} type - 消息类型：图文消息-10 文字-1 图片-2 语音-3 视频-15 默认-10
      */
     @login
@@ -643,7 +654,7 @@ export default class Wechat extends events {
     }
     safesend(obj) {
         return WechatRequest({
-            url: `${Config.api.masssend}?t=ajax-response&token=${this.data.token}${obj.send_time ? `&action=time_send${obj.send_time}` : ''}`,
+            url: `${Config.api.masssend}?t=ajax-response&token=${this.data.token}${obj.send_time ? `&action=time_send` : ''}`,
             form: {
                 token: this.data.token,
                 f: 'json',

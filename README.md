@@ -171,6 +171,7 @@ API.filepage().then((files) => {
  * @param {string} news[].description - 描述信息
  * @param {string} news[].html - 文章内容
  * @param {string} news[].url - 原文地址
+ * @param {number} [appMsgId] - 图文素材id，传此字段表示更新图文素材
  * @return {Promise} appMsgId
  */
 API.operate_appmsg(news).then((appMsgId) => {
