@@ -486,6 +486,7 @@ export default class Wechat extends events {
     @login
     masssend(appmsgid, groupid = -1, send_time = 0, type = 10) {
         let params = {
+            type: type,
             groupid: groupid,
             send_time: send_time
         };
@@ -500,9 +501,8 @@ export default class Wechat extends events {
             return new Promise((resolve, reject) => {
                 this.getticket().then(body => {
                     this.getuuid(body.ticket).then(uuid => {
-                        params.uuid = uuid;
-                        Object.assign(params, body);
-                        this.checkuuid(params).then(res => {
+                        this.checkuuid(uuid, body.ticket, body.operation_seq).then(res => {
+                            params.operation_seq = body.operation_seq;
                             params.code = res.code;
                             this.safesend(params).then(resolve).catch(reject);
                         }).catch(reject);
@@ -617,7 +617,7 @@ export default class Wechat extends events {
             }
         });
     }
-    checkuuid(obj) {
+    checkuuid(uuid, ticket, operation_seq) {
         let douuid = (resolve, reject) => {
             WechatRequest({
                 url: `${Config.api.safeuuid}?timespam=${Date.now()}&token=${this.data.token}`,
@@ -626,7 +626,7 @@ export default class Wechat extends events {
                     f: 'json',
                     ajax: 1,
                     random: Math.random(),
-                    uuid: obj.uuid,
+                    uuid: uuid,
                     action: 'json',
                     type: 'json'
                 }
@@ -644,7 +644,7 @@ export default class Wechat extends events {
         return new Promise((resolve, reject) => {
             let filename = 'qrcode-safe.png';
             let writeStream = fs.createWriteStream(filename);
-            WechatRequest.get(`${Config.api.safeqrcode}?action=check&type=msgs&ticket=${obj.ticket}&uuid=${obj.uuid}&msgid=${obj.operation_seq}`).pipe(writeStream).on('error', reject);
+            WechatRequest.get(`${Config.api.safeqrcode}?action=check&type=msgs&ticket=${ticket}&uuid=${uuid}&msgid=${operation_seq}`).pipe(writeStream).on('error', reject);
             writeStream.on('finish', () => {
                 this.emit('scan.send', filename);
                 Log.info('请扫描群发认证二维码！');
@@ -668,53 +668,44 @@ export default class Wechat extends events {
         }
         return check(1).then(() => check(0));
     }
-    safesend(obj) {
-        return this.copyright(obj.appmsgid).then(() => {
-            return WechatRequest({
-                url: `${Config.api.masssend}?t=ajax-response&token=${this.data.token}${obj.send_time ? '&action=time_send' : ''}`,
-                form: {
-                    token: this.data.token,
-                    f: 'json',
-                    ajax: 1,
-                    random: Math.random(),
-                    smart_product: 0,
-                    type: 10,
-                    appmsgid: obj.appmsgid,
-                    send_time: obj.send_time,
-                    cardlimit: 1,
-                    sex: 0,
-                    groupid: obj.groupid,
-                    synctxweibo: 0,
-                    country: '',
-                    province: '',
-                    city: '',
-                    imgcode: '',
-                    direct_send: 1,
-                    operation_seq: obj.operation_seq,
-                    req_id: this._getid(32),
-                    req_time: Date.now(),
-                    code: obj.code || ''
-                }
-            }).then(body => {
-                if (body.base_resp.ret === 0) {
-                    return body;
-                } else {
-                    Log.error(body);
-                    throw body;
-                }
-            });
-        });        
+    safesend(params) {
+        return params.appmsgid ? this.copyright(params.appmsgid).then(() => this._real_send(params)) : this._real_send(params);
+    }
+    _real_send(params) {
+        return WechatRequest({
+            url: `${Config.api.masssend}?t=ajax-response&token=${this.data.token}${params.send_time ? '&action=time_send' : ''}`,
+            form: Object.assign({
+                token: this.data.token,
+                f: 'json',
+                ajax: 1,
+                random: Math.random(),
+                smart_product: 0,
+                cardlimit: 1,
+                sex: 0,
+                synctxweibo: 0,
+                direct_send: 1,
+                req_id: this._getid(32),
+                req_time: Date.now()
+            }, params)
+        }).then(body => {
+            if (body.base_resp.ret === 0) {
+                return body;
+            } else {
+                Log.error(body);
+                throw body;
+            }
+        });
     }
     /**
      * 取消定时群发
-     * @param {number} id 定时群发id
+     * @param {number} msgid 群发消息id
      */
     @login
-    cancel_time_send(id) {
+    cancel_time_send(msgid) {
         return WechatRequest({
             url: `${Config.api.masssendpage}?action=cancel_time_send&token=${this.data.token}`,
             form: {
-                id: id,
+                id: msgid,
                 token: this.data.token,
                 f: 'json',
                 ajax: 1

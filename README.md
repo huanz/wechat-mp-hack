@@ -59,7 +59,7 @@ API.once('vcode', (filepath) => {
 ```javascript
 /**
  * @desc 登录公众号
- * @param {string} imgcode - [可选]验证码
+ * @param {string} [imgcode] - [可选]验证码
  * @return {Promise<object>} data
  */
 API.login().then(data => {
@@ -87,9 +87,9 @@ try {
 ```javascript
 /**
  * 获取图文/视频素材列表
- * @param {number} type - 消息类型：图文消息-10 视频消息-15 默认-10
- * @param {number} begin - 从第几条开始 默认-0
- * @param {number} count - 返回条数 默认-10
+ * @param {number} [type] - 消息类型：图文消息-10 视频消息-15 默认-10
+ * @param {number} [begin] - 从第几条开始 默认-0
+ * @param {number} [count] - 返回条数 默认-10
  * @return {Promise<array>} - 素材列表
  * @return {number} [].app_id - 素材id appMsgId
  * @return {string} [].author - 作者
@@ -136,10 +136,10 @@ API.appmsg().then((items) => {
 ```javascript
 /**
  * 获取图片/语音素材列表
- * @param {number} type - 素材类型：图片素材-2 语音素材-3 默认-2
- * @param {number} begin - 从第几条开始 默认-0
- * @param {number} count - 返回条数 默认-10
- * @param {number} group_id - 图片素材专用，分组id 全部图片-0 未分组-1 文章配图-3 或者其它你自己新建的分组id
+ * @param {number} [type] - 素材类型：图片素材-2 语音素材-3 默认-2
+ * @param {number} [begin] - 从第几条开始 默认-0
+ * @param {number} [count] - 返回条数 默认-10
+ * @param {number} [group_id] - 图片素材专用，分组id 全部图片-0 未分组-1 文章配图-3 或者其它你自己新建的分组id
  * @return {Promise<array>} - 素材列表
  * @return {string} [].cdn_url - 资源地址
  * @return {number} [].file_id
@@ -245,7 +245,7 @@ API.localUpload('qrcode-safe.png').then((result) => {
 /**
  * 获取图文素材文章临时预览链接
  * @param {number} appmsgid - 图文素材id
- * @param {number} itemidx - 文章在图文素材中的索引，从1开始 默认: 1
+ * @param {number} [itemidx] - 文章在图文素材中的索引，从1开始 默认: 1
  * @return {Promise<string>} - 文章临时预览链接
  */
 API.preview_post(100000126, 2).then(post_url => {
@@ -262,7 +262,7 @@ API.preview_post(100000126, 2).then(post_url => {
  * 预览群发消息
  * @param {string} username - 预览人微信号/QQ号/手机号
  * @param {number|string} content - 预览内容，图文消息-appmsgid 文字-content 图片/语音/视频-fileid
- * @param {number} type - 消息类型：图文消息-10 文字-1 图片-2 语音-3 视频-15 默认-10
+ * @param {number} [type] - 消息类型：图文消息-10 文字-1 图片-2 语音-3 视频-15 默认-10
  */
 API.preview_appmsg('Zaker-yhz', 100000126).then(res => {
     console.log('预览发送成功');
@@ -276,11 +276,26 @@ API.preview_appmsg('Zaker-yhz', 100000126).then(res => {
 ```javascript
 /**
  * 群发消息
- * @param {string} appMsgId
- * @param {number} groupid - 分组id，默认-(-1) 所有用户
- * @param {number} send_time - 定时群发，默认-0 不定时群发  定时群发设置定时时间戳（单位秒）
+ * @param {number|string} appmsgid - 消息内容，图文消息-appmsgid 文字-文字内容 图片/语音/视频-fileid
+ * @param {number} [groupid] - 分组id，默认-1 所有用户
+ * @param {number} [send_time] - 定时群发，默认-0 不定时群发  定时群发设置定时时间戳（单位秒）
+ * @param {number} [type] - 消息类型：图文消息-10 文字-1 图片-2 语音-3 视频-15 默认-10
  */
 API.masssend(appMsgId).then(() => {
+    console.log('success');
+}).catch(console.error.bind(console));
+```
+
+#### cancel_time_send
+
+取消定时群发
+
+```javascript
+/**
+ * 取消定时群发
+ * @param {number} msgid 群发消息id
+ */
+API.cancel_time_send(1000000041).then(() => {
     console.log('success');
 }).catch(console.error.bind(console));
 ```
@@ -294,7 +309,7 @@ API.masssend(appMsgId).then(() => {
  * 发文本消息给某个用户
  * @param {string} tofakeid - 用户fakeid，可以在公众号后台singlesendpage页面url看到或者消息列表
  * @param {string} msg - 消息内容
- * @param {string} replyId - 回复消息id，可以消息列表看到，可选
+ * @param {string} [replyId] - 回复消息id，可以消息列表看到，可选
  */
 API.singlesend('osl8HwPBTCsVbquNsnYbUfOQH8sM', '哈哈哈哈', 425131038).then(res => {
     console.log(res);
@@ -309,7 +324,7 @@ API.singlesend('osl8HwPBTCsVbquNsnYbUfOQH8sM', '哈哈哈哈', 425131038).then(r
 /**
  * 获取公众号消息列表
  * @param {number} count - 消息条数
- * @param {number|string} day - 今天：0 昨天：1 前天：2 更早：3 最近5天：7 已收藏消息：star，默认：0
+ * @param {number|string} [day] - 今天：0 昨天：1 前天：2 更早：3 最近5天：7 已收藏消息：star，默认：0
  * @return {array<object>} msgs
  * @return {string} msgs[].content - 消息内容
  * @return {string} msgs[].date_time - 消息时间
