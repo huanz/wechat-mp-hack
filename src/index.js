@@ -652,31 +652,72 @@ export default class Wechat extends events {
             });
         });
     }
+    copyright(appmsgid, type = 10) {
+        const check = (first) => {
+            return WechatRequest({
+                url: `${Config.api.masssend}?action=get_appmsg_copyright_stat&token=${this.data.token}`,
+                form: {
+                    token: this.data.token,
+                    f: 'json',
+                    ajax: 1,
+                    first_check: first,
+                    appmsgid: appmsgid,
+                    type: type
+                }
+            });
+        }
+        return check(1).then(() => check(0));
+    }
     safesend(obj) {
+        return this.copyright(obj.appmsgid).then(() => {
+            return WechatRequest({
+                url: `${Config.api.masssend}?t=ajax-response&token=${this.data.token}${obj.send_time ? '&action=time_send' : ''}`,
+                form: {
+                    token: this.data.token,
+                    f: 'json',
+                    ajax: 1,
+                    random: Math.random(),
+                    smart_product: 0,
+                    type: 10,
+                    appmsgid: obj.appmsgid,
+                    send_time: obj.send_time,
+                    cardlimit: 1,
+                    sex: 0,
+                    groupid: obj.groupid,
+                    synctxweibo: 0,
+                    country: '',
+                    province: '',
+                    city: '',
+                    imgcode: '',
+                    direct_send: 1,
+                    operation_seq: obj.operation_seq,
+                    req_id: this._getid(32),
+                    req_time: Date.now(),
+                    code: obj.code || ''
+                }
+            }).then(body => {
+                if (body.base_resp.ret === 0) {
+                    return body;
+                } else {
+                    Log.error(body);
+                    throw body;
+                }
+            });
+        });        
+    }
+    /**
+     * 取消定时群发
+     * @param {number} id 定时群发id
+     */
+    @login
+    cancel_time_send(id) {
         return WechatRequest({
-            url: `${Config.api.masssend}?t=ajax-response&token=${this.data.token}${obj.send_time ? `&action=time_send` : ''}`,
+            url: `${Config.api.masssendpage}?action=cancel_time_send&token=${this.data.token}`,
             form: {
+                id: id,
                 token: this.data.token,
                 f: 'json',
-                ajax: 1,
-                random: Math.random(),
-                smart_product: 0,
-                type: 10,
-                appmsgid: obj.appmsgid,
-                send_time: obj.send_time,
-                cardlimit: 1,
-                sex: 0,
-                groupid: obj.groupid,
-                synctxweibo: 0,
-                country: '',
-                province: '',
-                city: '',
-                imgcode: '',
-                direct_send: 1,
-                operation_seq: obj.operation_seq,
-                req_id: this._getid(32),
-                req_time: Date.now(),
-                code: obj.code || ''
+                ajax: 1
             }
         }).then(body => {
             if (body.base_resp.ret === 0) {
