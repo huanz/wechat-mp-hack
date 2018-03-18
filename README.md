@@ -300,6 +300,28 @@ API.cancel_time_send(1000000041).then(() => {
 }).catch(console.error.bind(console));
 ```
 
+#### timesend_list
+
+定时群发消息列表
+
+```javascript
+/**
+ * 定时群发消息列表
+ * @return {Promise<array>} msgs - 定时群发消息列表
+ * @return {number} msgs[].type - 消息类型
+ * @return {number} msgs[].msgid - 消息id
+ * @return {object} msgs[].sent_info
+ * @return {number} msgs[].sent_info.time - 群发时间
+ * @return {boolean} msgs[].sent_info.is_send_all - 是否群发给所有人
+ * @return {array} msgs[].appmsg_info - 图文消息内容
+ * @return {object} msgs[].text_info - 文字消息
+ * @return {string} msgs[].text_info.content - 文字消息内容
+ */
+API.timesend_list().then(msgs => {
+    console.log(msgs);
+});
+```
+
 #### singlesend
 
 发文本消息给某个用户

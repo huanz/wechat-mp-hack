@@ -35,7 +35,7 @@
   },
   "homepage": "https://github.com/huanz/wechat-mp-hack#readme",
   "engines": {
-    "node": "^4.x",
+    "node": "^6.x",
     "npm": "^5.x"
   }
 }

@@ -720,6 +720,30 @@ export default class Wechat extends events {
         });
     }
     /**
+     * 定时群发消息列表
+     * @return {Promise<array>} msgs - 定时群发消息列表
+     * @return {number} msgs[].type - 消息类型
+     * @return {number} msgs[].msgid - 消息id
+     * @return {object} msgs[].sent_info
+     * @return {number} msgs[].sent_info.time - 群发时间
+     * @return {boolean} msgs[].sent_info.is_send_all - 是否群发给所有人
+     * @return {array} msgs[].appmsg_info - 图文消息内容
+     * @return {object} msgs[].text_info - 文字消息
+     * @return {string} msgs[].text_info.content - 文字消息内容
+     */
+    @login
+    timesend_list() {
+        return WechatRequest.getJSON(`${Config.api.home}?t=home/index&token=${this.data.token}`).then(body => {
+            if (body.base_resp.ret === 0) {
+                let msgs = JSON.parse(body.timesend_msg);
+                return msgs.sent_list;
+            } else {
+                Log.error(body);
+                throw body;
+            }
+        });
+    }
+    /**
      * 发文本消息给某个用户
      * @param {string} tofakeid - 用户fakeid，可以在公众号后台singlesendpage页面url看到或者消息列表
      * @param {string} msg - 消息内容
