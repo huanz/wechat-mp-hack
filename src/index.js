@@ -11,8 +11,7 @@ import Log from './util/log';
 import {
     login
 } from './decorators/index';
-
-const WECHATFILE = path.join(__dirname, '_data', 'wechat.json');
+import Cache from './util/cache';
 
 export default class Wechat extends events {
     constructor(username, pwd) {
@@ -21,12 +20,8 @@ export default class Wechat extends events {
         this.username = username;
         this.pwd = createHash('md5').update(pwd.substr(0, 16)).digest('hex');
         this.islogin = false;
-        try {
-            let data = JSON.parse(fs.readFileSync(WECHATFILE));
-            this.data = data || {};
-        } catch (error) {
-            this.data = {};
-        }
+        this.cache = new Cache('wechat');
+        this.data = this.cache._data;
     }
     startlogin(imgcode = '') {
         return WechatRequest({
@@ -133,7 +128,8 @@ export default class Wechat extends events {
                         }
                         this.islogin = true;
                         resolve(this.data);
-                        fs.writeFile(WECHATFILE, JSON.stringify(this.data), function () {});
+                        this.cache._data = this.data;
+                        this.cache._save();
                     } else {
                         reject('解析wxdata失败');
                     }
@@ -796,23 +792,105 @@ export default class Wechat extends events {
      */
     @login
     message(count, day = 0) {
-        return new Promise((resolve, reject) => {
-            let url = `${Config.api.message}?t=message/list&count=${count}&token=${this.data.token}`;
-            url += day === 'star' ? '&action=star' : `&day=${day}`;
-            WechatRequest.get(url, (e, r, body) => {
-                if (e) {
-                    reject(e);
-                } else {
-                    try {
-                        let msgMatch = body.match(/{"msg_item":(\[[\s\S]*?\])}/);
-                        let msgs = JSON.parse(msgMatch[1]);
-                        resolve(msgs);
-                    } catch (error) {
-                        reject(error);
-                    }
-                }
-            });
+        let url = `${Config.api.message}?t=message/list&f=json&count=${count}&token=${this.data.token}`;
+        url += day === 'star' ? '&action=star' : `&day=${day}`;
+        return WechatRequest.getJSON(url).then(body => {
+            if (body.base_resp.ret === 0) {
+                return JSON.parse(body.msg_items);
+            } else {
+                throw body.base_resp.err_msg;
+            }
         });
+    }
+    /**
+     * @desc 获取关注用户列表
+     * @return {array<object>} userlist
+     * @return {string} userlist[].user_openid
+     * @return {string} userlist[].user_name - 用户昵称
+     * @return {string} userlist[].user_remark - 用户备注名称
+     * @return {array} userlist[].user_group_id - 分组
+     * @return {number} userlist[].user_create_time - 关注时间，单位：秒
+     * @return {string} userlist[].user_head_img - 用户头像地址
+     */
+    @login
+    user_list() {
+        return WechatRequest.getJSON(`${Config.api.userlist}?action=get_all_data&lang=zh_CN&f=json&token=${this.data.token}`).then(body => {
+            if (body.base_resp.ret === 0) {
+                let userlist = body.user_list.user_info_list;
+                // 换成大logo
+                userlist.map(user => {
+                    if (user.user_head_img && user.user_head_img.endsWith('/64')) {
+                        user.user_head_img = user.user_head_img.replace(/64$/, '0');
+                    }
+                    return user;
+                })
+                this.cache.set('userlist', userlist);
+                return userlist;
+            } else {
+                throw body.base_resp.err_msg;
+            }
+        });
+    }
+    /**
+     * 获取用户信息
+     * @param {string} user_openid 
+     * @return {object} user
+     * @return {string} user.user_openid
+     * @return {string} user.user_name - 用户昵称
+     * @return {string} user.user_remark - 用户备注名称
+     * @return {array} user.user_group_id - 分组
+     * @return {number} user.user_create_time - 关注时间，单位：秒
+     * @return {string} user.user_head_img - 用户头像地址
+     */
+    user_info(user_openid) {
+        const userlist = this.cache.get('userlist');
+        const remote_find = () => {
+            return this.user_list().then(users => {
+                return users.find(user => user.user_openid === user_openid);
+            });
+        };
+        if (userlist && userlist.length) {
+            let user = userlist.find(user => user.user_openid === user_openid);
+            return Promise.resolve(user) || remote_find();
+        } else {
+            return remote_find();
+        }
+    }
+    /**
+     * 获取用户详细信息
+     * @param {string} user_openid 
+     * @return {object} user
+     * @return {string} user.user_openid
+     * @return {string} user.user_city - 用户城市
+     * @return {string} user.user_country - 用户国家
+     * @return {string} user.user_province - 省份
+     * @return {string} user.user_signature - 签名
+     * @return {number} user.user_comment_cnt - 留言量
+     * @return {number} user.user_selected_comment_cnt - 精选留言量
+     * @return {number} user.user_msg_cnt - 消息量
+     * @return {number} user.user_gender - 性别 0：未知 1：男 2：女
+     * @return {string} user.user_name - 用户昵称
+     * @return {string} user.user_remark - 用户备注名称
+     * @return {array} user.user_group_id - 分组
+     * @return {number} user.user_create_time - 关注时间，单位：秒
+     * @return {string} user.user_head_img - 用户头像地址
+     * @return {number} user.user_in_blacklist - 是否在黑名单
+     */
+    @login
+    user_info_detail(user_openid) {
+        return WechatRequest({
+            url: `${Config.api.userlist}?action=get_fans_info`,
+            form: {
+                token: this.data.token,
+                user_openid: user_openid
+            }
+        }).then(body => {
+            if (body.base_resp.ret === 0) {
+                return body.user_list.user_info_list[0];
+            } else {
+                throw body.base_resp.err_msg;
+            }
+        })
     }
     _getid(len) {
         let id = '';

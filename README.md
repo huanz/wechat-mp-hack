@@ -369,6 +369,77 @@ API.message(1).then(msgs => {
 }).catch(console.error.bind(console)); 
 ```
 
+#### user_list
+
+获取公众号关注用户列表
+
+```javascript
+/**
+ * @desc 获取关注用户列表
+ * @return {array<object>} userlist
+ * @return {string} userlist[].user_openid
+ * @return {string} userlist[].user_name - 用户昵称
+ * @return {string} userlist[].user_remark - 用户备注名称
+ * @return {array} userlist[].user_group_id - 分组
+ * @return {number} userlist[].user_create_time - 关注时间，单位：秒
+ * @return {string} userlist[].user_head_img - 用户头像地址
+ */
+API.user_list().then(res => {
+    console.log(res);
+});
+```
+
+#### user_info
+
+获取某用户信息
+
+```javascript
+/**
+ * 获取用户信息
+ * @param {string} user_openid 
+ * @return {object} user
+ * @return {string} user.user_openid
+ * @return {string} user.user_name - 用户昵称
+ * @return {string} user.user_remark - 用户备注名称
+ * @return {array} user.user_group_id - 分组
+ * @return {number} user.user_create_time - 关注时间，单位：秒
+ * @return {string} user.user_head_img - 用户头像地址
+ */
+API.user_info('oslHwqwYnw20jnqMca18KET91pa0').then(res => {
+    console.log(res);
+});
+```
+
+#### user_info_detail
+
+获取某用户详细信息
+
+```javascript
+/**
+ * 获取用户详细信息
+ * @param {string} user_openid 
+ * @return {object} user
+ * @return {string} user.user_openid
+ * @return {string} user.user_city - 用户城市
+ * @return {string} user.user_country - 用户国家
+ * @return {string} user.user_province - 省份
+ * @return {string} user.user_signature - 签名
+ * @return {number} user.user_comment_cnt - 留言量
+ * @return {number} user.user_selected_comment_cnt - 精选留言量
+ * @return {number} user.user_msg_cnt - 消息量
+ * @return {number} user.user_gender - 性别 0：未知 1：男 2：女
+ * @return {string} user.user_name - 用户昵称
+ * @return {string} user.user_remark - 用户备注名称
+ * @return {array} user.user_group_id - 分组
+ * @return {number} user.user_create_time - 关注时间，单位：秒
+ * @return {string} user.user_head_img - 用户头像地址
+ * @return {number} user.user_in_blacklist - 是否在黑名单
+ */
+API.user_info_detail('oslHwqwYnw20jnqMca18KET91pa0').then(res => {
+    console.log(res);
+});
+```
+
 #### qrdecode
 
 二维码解析

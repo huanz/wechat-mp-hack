@@ -4,18 +4,11 @@ import request from 'request';
 import FileCookieStore from 'tough-cookie-filestore';
 import Config from './config';
 import Log from './log';
+import Cache from './cache';
 
-const COOKIEFILE = path.join(__dirname, '..', '_data', 'cookies.json');
-
-let cookieStore = null;
-try {
-    cookieStore = new FileCookieStore(COOKIEFILE);
-} catch (error) {
-    fs.writeFileSync(COOKIEFILE, '');
-    cookieStore = new FileCookieStore(COOKIEFILE);
-}
-let j = request.jar(cookieStore);
-let r = request.defaults({
+const cookieCache = new Cache('cookie');
+const j = request.jar(new FileCookieStore(cookieCache.cacheFile));
+const r = request.defaults({
     method: 'POST',
     headers: {
         'Referer': Config.baseurl,

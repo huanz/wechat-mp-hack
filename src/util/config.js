@@ -21,7 +21,8 @@ const API = {
     singlesend: `${BASEURL}/cgi-bin/singlesend`,
     message: `${BASEURL}/cgi-bin/message`,
     uploadimg2cdn: `${BASEURL}/cgi-bin/uploadimg2cdn`,
-    verifycode: `${BASEURL}/cgi-bin/verifycode`
+    verifycode: `${BASEURL}/cgi-bin/verifycode`,
+    userlist: `${BASEURL}/cgi-bin/user_tag`
 };
 
 const Config = {
