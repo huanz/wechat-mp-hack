@@ -844,17 +844,17 @@ export default class Wechat extends events {
      */
     user_info(user_openid) {
         const userlist = this.cache.get('userlist');
-        const remote_find = () => {
-            return this.user_list().then(users => {
-                return users.find(user => user.user_openid === user_openid);
-            });
-        };
         if (userlist && userlist.length) {
             let user = userlist.find(user => user.user_openid === user_openid);
-            return Promise.resolve(user) || remote_find();
+            return user ? Promise.resolve(user) : this._remote_find(user_openid);
         } else {
-            return remote_find();
+            return this._remote_find(user_openid);
         }
+    }
+    _remote_find(user_openid) {
+        return this.user_list().then(users => {
+            return users.find(user => user.user_openid === user_openid);
+        });
     }
     /**
      * 获取用户详细信息
