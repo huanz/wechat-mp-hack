@@ -792,7 +792,7 @@ export default class Wechat extends events {
      */
     @login
     message(count, day = 0) {
-        let url = `${Config.api.message}?t=message/list&f=json&count=${count}&token=${this.data.token}`;
+        let url = `${Config.api.message}?t=message/list&f=json&filtertype=0&filterivrmsg=0&filterspammsg=0&count=${count}&token=${this.data.token}`;
         url += day === 'star' ? '&action=star' : `&day=${day}`;
         return WechatRequest.getJSON(url).then(body => {
             if (body.base_resp.ret === 0) {
