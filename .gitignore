@@ -1,5 +1,5 @@
 .vscode
-dist
+lib
 run.js
 qrcode-login.png
 qrcode-safe.png
