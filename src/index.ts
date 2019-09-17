@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import { createWriteStream, createReadStream } from 'fs';
+import { join } from 'path';
 import events from 'events';
 import { createHash } from 'crypto';
 import request from 'request';
@@ -36,7 +36,7 @@ export default class Wechat extends events {
         imgcode: imgcode,
         f: 'json',
       },
-    }).then(body => {
+    }).then((body: any) => {
       if (body.base_resp.ret === 0) {
         return this.login_qrcode();
       } else {
@@ -52,7 +52,7 @@ export default class Wechat extends events {
   login_vcode() {
     return new Promise((resolve, reject) => {
       let filename = 'verifycode.png';
-      let writeStream = fs.createWriteStream(filename);
+      let writeStream = createWriteStream(filename);
       WechatRequest.get(`${Config.api.verifycode}?username=${this.username}&r=${Date.now()}`)
         .pipe(writeStream)
         .on('error', reject);
@@ -65,7 +65,7 @@ export default class Wechat extends events {
   login_qrcode() {
     return new Promise((resolve, reject) => {
       let filename = 'qrcode-login.png';
-      let writeStream = fs.createWriteStream(filename);
+      let writeStream = createWriteStream(filename);
       WechatRequest.get(`${Config.api.loginqrcode}?action=getqrcode&param=4300`)
         .pipe(writeStream)
         .on('error', reject);
@@ -79,7 +79,7 @@ export default class Wechat extends events {
   checkLogin() {
     const chklogin = (resolve, reject) => {
       WechatRequest.getJSON(`${Config.api.loginqrcode}?action=ask&random=${Math.random()}`)
-        .then(body => {
+        .then((body: any) => {
           if (body.status === 1) {
             resolve(body);
           } else {
@@ -101,7 +101,7 @@ export default class Wechat extends events {
           ajax: 1,
           random: Math.random(),
         },
-      }).then(body => {
+      }).then((body: any) => {
         let token = null;
         if (body.base_resp.ret === 0 && (token = body.redirect_url.match(/token=(\d+)/))) {
           this.data.token = token[1];
@@ -122,10 +122,10 @@ export default class Wechat extends events {
         if (e) {
           reject(e);
         } else {
-          let ticketMatch = body.match(/ticket:"(\w+)"/);
-          let userNameMatch = body.match(/user_name:"(\w+)"/);
-          let massProtectMatch = body.match(/"protect_status":(\d+)/);
-          let operationMatch = body.match(/operation_seq:\s*"(\d+)"/);
+          const ticketMatch = body.match(/ticket:"([\s\S]*?)"/);
+          const userNameMatch = body.match(/user_name:"([\s\S]*?)"/);
+          const massProtectMatch = body.match(/"protect_status":(\d+)/);
+          const operationMatch = body.match(/operation_seq:\s*"(\d+)"/);
           if (ticketMatch && userNameMatch) {
             this.data.ticket = ticketMatch[1];
             this.data.user_name = userNameMatch[1];
@@ -155,13 +155,13 @@ export default class Wechat extends events {
       if (this.islogin) {
         resolve(this.data);
       } else if (this.data.token) {
-        let req = WechatRequest.get(Config.baseurl, (error, response, body) => {
+        const req: any = WechatRequest.get(Config.baseurl, (error, response, body) => {
           if (error) {
             reject(error);
           } else {
             let redirects = req._redirect.redirects;
             if (redirects && redirects.length) {
-              let redirectUri = redirects[redirects.length - 1].redirectUri;
+              const redirectUri = redirects[redirects.length - 1].redirectUri;
               if (/token=(\d+)/.test(redirectUri)) {
                 this.islogin = true;
                 resolve(this.data);
@@ -243,7 +243,7 @@ export default class Wechat extends events {
    */
   @login
   appmsg(type = 10, begin = 0, count = 10) {
-    return WechatRequest.getJSON(`${Config.api.appmsg}?begin=${begin}&count=${count}&type=${type}&token=${this.data.token}&action=${type === 15 ? 'list_video' : 'list_card'}`).then(body => {
+    return WechatRequest.getJSON(`${Config.api.appmsg}?begin=${begin}&count=${count}&type=${type}&token=${this.data.token}&action=${type === 15 ? 'list_video' : 'list_card'}`).then((body: any) => {
       if (body.base_resp.ret === 0) {
         return body.app_msg_info.item;
       } else {
@@ -272,7 +272,7 @@ export default class Wechat extends events {
    */
   @login
   filepage(type = 2, begin = 0, count = 10, group_id = 0) {
-    return WechatRequest.getJSON(`${Config.api.filepage}?begin=${begin}&count=${count}&type=${type}&token=${this.data.token}&group_id=${group_id}`).then(body => {
+    return WechatRequest.getJSON(`${Config.api.filepage}?begin=${begin}&count=${count}&type=${type}&token=${this.data.token}&group_id=${group_id}`).then((body: any) => {
       if (body.base_resp.ret === 0) {
         return body.page_info.file_item;
       } else {
@@ -354,7 +354,7 @@ export default class Wechat extends events {
     return localReg.some(pattern => pattern.test(url));
   }
   _operate_appmsg(wechatNews, count, appMsgId) {
-    let params = {
+    const params: any = {
       token: this.data.token,
       f: 'json',
       ajax: 1,
@@ -376,7 +376,7 @@ export default class Wechat extends events {
         Referer: `${Config.api.appmsg}?t=media/appmsg_edit&action=edit&type=10&isMul=1&isNew=1&token=${this.data.token}`,
       },
       form: params,
-    }).then(body => {
+    }).then((body: any) => {
       if (body.base_resp.ret === 0) {
         return body.appMsgId;
       } else {
@@ -399,7 +399,7 @@ export default class Wechat extends events {
     return obj;
   }
   _newsToMpParam(item, index) {
-    let obj = {};
+    const obj = {};
     obj[`title${index}`] = item.title;
     obj[`content${index}`] = item.html;
     obj[`digest${index}`] = item.description;
@@ -437,8 +437,8 @@ export default class Wechat extends events {
   @login
   filetransfer(imgurl) {
     return new Promise((resolve, reject) => {
-      let filename = path.join(Config.upload, Date.now() + '.png');
-      let writeStream = fs.createWriteStream(filename);
+      const filename = join(Config.upload, Date.now() + '.png');
+      const writeStream = createWriteStream(filename);
       request(imgurl)
         .pipe(writeStream)
         .on('error', reject);
@@ -466,9 +466,9 @@ export default class Wechat extends events {
         Referer: `${Config.api.filepage}?type=2&begin=0&count=12&t=media/img_list&token=${this.data.token}`,
       },
       formData: {
-        file: fs.createReadStream(filepath),
+        file: createReadStream(filepath),
       },
-    }).then(body => {
+    }).then((body: any) => {
       if (body.base_resp.ret === 0) {
         return {
           fileid: body.content,
@@ -492,7 +492,7 @@ export default class Wechat extends events {
         imgurl: imgurl,
         t: 'ajax-editor-upload-img',
       },
-    }).then(body => {
+    }).then((body: any) => {
       if (body.errcode === 0) {
         return body.url;
       } else {
@@ -509,7 +509,7 @@ export default class Wechat extends events {
    */
   @login
   masssend(appmsgid, groupid = -1, send_time = 0, type = 10) {
-    let params = {
+    const params: any = {
       type: type,
       groupid: groupid,
       send_time: send_time,
@@ -528,7 +528,7 @@ export default class Wechat extends events {
             this.getuuid(body.ticket)
               .then(uuid => {
                 this.checkuuid(uuid, body.ticket, body.operation_seq)
-                  .then(res => {
+                  .then((res: any) => {
                     params.operation_seq = body.operation_seq;
                     params.code = res.code;
                     this.safesend(params)
@@ -554,7 +554,7 @@ export default class Wechat extends events {
    */
   @login
   preview_post(appmsgid, itemidx = 1) {
-    return WechatRequest.getJSON(`${Config.api.appmsg}?action=get_temp_url&appmsgid=${appmsgid}&itemidx=${itemidx}&token=${this.data.token}`).then(body => {
+    return WechatRequest.getJSON(`${Config.api.appmsg}?action=get_temp_url&appmsgid=${appmsgid}&itemidx=${itemidx}&token=${this.data.token}`).then((body: any) => {
       if (body.base_resp.ret === 0) {
         return body.temp_url;
       } else {
@@ -570,7 +570,7 @@ export default class Wechat extends events {
    */
   @login
   preview_appmsg(username, content, type = 10) {
-    let params = {
+    const params: any = {
       token: this.data.token,
       f: 'json',
       ajax: 1,
@@ -589,7 +589,7 @@ export default class Wechat extends events {
     return WechatRequest({
       url: `${Config.api.operate_appmsg}?t=ajax-appmsg-preview&token=${this.data.token}&sub=preview&type=${type}`,
       form: params,
-    }).then(body => {
+    }).then((body: any) => {
       if (body.base_resp.ret === 0) {
         return body;
       } else {
@@ -614,7 +614,7 @@ export default class Wechat extends events {
         random: Math.random(),
         action: 'get_ticket',
       },
-    }).then(body => {
+    }).then((body: any) => {
       if (body.base_resp.ret === 0) {
         Log.info('群发ticket获取成功');
         return {
@@ -640,7 +640,7 @@ export default class Wechat extends events {
         type: 'json',
         ticket: ticket,
       },
-    }).then(body => {
+    }).then((body: any) => {
       if (body.uuid) {
         Log.info('成功获取uuid');
         return body.uuid;
@@ -663,7 +663,7 @@ export default class Wechat extends events {
           type: 'json',
         },
       })
-        .then(body => {
+        .then((body: any) => {
           if (body.errcode == 405) {
             Log.info('成功扫描群发认证二维码！');
             resolve(body);
@@ -677,7 +677,7 @@ export default class Wechat extends events {
     };
     return new Promise((resolve, reject) => {
       let filename = 'qrcode-safe.png';
-      let writeStream = fs.createWriteStream(filename);
+      let writeStream = createWriteStream(filename);
       WechatRequest.get(`${Config.api.safeqrcode}?action=check&type=msgs&ticket=${ticket}&uuid=${uuid}&msgid=${operation_seq}`)
         .pipe(writeStream)
         .on('error', reject);
@@ -726,7 +726,7 @@ export default class Wechat extends events {
         },
         params
       ),
-    }).then(body => {
+    }).then((body: any) => {
       if (body.base_resp.ret === 0) {
         return body;
       } else {
@@ -749,7 +749,7 @@ export default class Wechat extends events {
         f: 'json',
         ajax: 1,
       },
-    }).then(body => {
+    }).then((body: any) => {
       if (body.base_resp.ret === 0) {
         return body;
       } else {
@@ -772,7 +772,7 @@ export default class Wechat extends events {
    */
   @login
   timesend_list() {
-    return WechatRequest.getJSON(`${Config.api.home}?t=home/index&token=${this.data.token}`).then(body => {
+    return WechatRequest.getJSON(`${Config.api.home}?t=home/index&token=${this.data.token}`).then((body: any) => {
       if (body.base_resp.ret === 0) {
         let msgs = JSON.parse(body.timesend_msg);
         return msgs.sent_list;
@@ -803,7 +803,7 @@ export default class Wechat extends events {
         quickReplyId: replyId,
         imgcode: '',
       },
-    }).then(body => {
+    }).then((body: any) => {
       if (body.base_resp.ret === 0) {
         return body;
       } else {
@@ -834,10 +834,10 @@ export default class Wechat extends events {
    * @return {string} msgs[].wx_headimg_url - 用户头像地址
    */
   @login
-  message(count, day = 0) {
+  message(count: number, day: number | string = 0) {
     let url = `${Config.api.message}?t=message/list&f=json&filtertype=0&filterivrmsg=0&filterspammsg=0&count=${count}&token=${this.data.token}`;
     url += day === 'star' ? '&action=star' : `&day=${day}`;
-    return WechatRequest.getJSON(url).then(body => {
+    return WechatRequest.getJSON(url).then((body: any) => {
       if (body.base_resp.ret === 0) {
         return JSON.parse(body.msg_items);
       } else {
@@ -857,7 +857,7 @@ export default class Wechat extends events {
    */
   @login
   user_list() {
-    return WechatRequest.getJSON(`${Config.api.userlist}?action=get_all_data&lang=zh_CN&f=json&token=${this.data.token}`).then(body => {
+    return WechatRequest.getJSON(`${Config.api.userlist}?action=get_all_data&lang=zh_CN&f=json&token=${this.data.token}`).then((body: any) => {
       if (body.base_resp.ret === 0) {
         let userlist = body.user_list.user_info_list;
         // 换成大logo
@@ -927,7 +927,7 @@ export default class Wechat extends events {
         token: this.data.token,
         user_openid: user_openid,
       },
-    }).then(body => {
+    }).then((body: any) => {
       if (body.base_resp.ret === 0) {
         return body.user_list.user_info_list[0];
       } else {
@@ -950,12 +950,12 @@ export default class Wechat extends events {
    */
   qrdecode(url) {
     return new Promise((resolve, reject) => {
-      let formData = {};
+      const formData: any = {};
       if (/^https?:\/\//.test(url)) {
         formData.url = url;
       } else {
         try {
-          formData.qrcode = fs.createReadStream(url);
+          formData.qrcode = createReadStream(url);
         } catch (error) {
           reject(error);
         }

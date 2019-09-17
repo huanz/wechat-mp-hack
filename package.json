@@ -4,7 +4,7 @@
   "description": "微信公众号接口，无需微信认证实现自动创建素材、自动群发图文消息",
   "main": "lib/index.js",
   "scripts": {
-    "start": "node ./run.js",
+    "start": "npm run prepublishOnly && node ./run.js",
     "prepublishOnly": "rm -rf lib && tsc"
   },
   "keywords": [
@@ -21,8 +21,9 @@
     "tough-cookie-filestore": "0.0.1"
   },
   "devDependencies": {
-    "@commitlint/cli": "^8.1.0",
-    "@commitlint/config-conventional": "^8.1.0",
+    "@commitlint/cli": "^8.2.0",
+    "@commitlint/config-conventional": "^8.2.0",
+    "@types/request": "^2.48.3",
     "husky": "^3.0.5",
     "typescript": "^3.6.3"
   },

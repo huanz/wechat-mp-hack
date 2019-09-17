@@ -36,24 +36,18 @@ const WechatRequest = options => {
   });
 };
 
-WechatRequest.get = (...options) => {
-  return r.get(...options);
-};
+WechatRequest.get = r.get;
 
-WechatRequest.getJSON = (url, options) => {
-  return WechatRequest(
-    Object.assign(
-      {
-        method: 'GET',
-        url: url,
-        qs: {
-          f: 'json',
-          ajax: 1,
-        },
-      },
-      options
-    )
-  );
+WechatRequest.getJSON = (url, options?) => {
+  return WechatRequest({
+    method: 'GET',
+    url: url,
+    qs: {
+      f: 'json',
+      ajax: 1,
+    },
+    ...options,
+  });
 };
 
 WechatRequest.cookies = () => {
