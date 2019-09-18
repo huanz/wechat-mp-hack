@@ -1,10 +1,16 @@
 {
   "name": "wechat-mp-hack",
-  "version": "1.1.8",
+  "version": "1.1.9",
   "description": "微信公众号接口，无需微信认证实现自动创建素材、自动群发图文消息",
   "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "demo"
+  ],
   "scripts": {
-    "start": "npm run prepublishOnly && node ./run.js",
+    "start": "npm run prepublishOnly && npm run dev",
+    "dev": "node ./run.js",
     "prepublishOnly": "rm -rf lib && tsc"
   },
   "keywords": [
@@ -36,7 +42,7 @@
   },
   "homepage": "https://github.com/huanz/wechat-mp-hack#readme",
   "engines": {
-    "node": "^8.x",
+    "node": "^10.x",
     "npm": "^6.x"
   }
 }

@@ -9,7 +9,7 @@ import Log from './util/log';
 import { login } from './decorators/index';
 import Cache from './util/cache';
 
-export default class Wechat extends events {
+class Wechat extends events {
   username: string;
   pwd: string;
   islogin: boolean;
@@ -159,7 +159,7 @@ export default class Wechat extends events {
           if (error) {
             reject(error);
           } else {
-            let redirects = req._redirect.redirects;
+            const redirects = req._redirect.redirects;
             if (redirects && redirects.length) {
               const redirectUri = redirects[redirects.length - 1].redirectUri;
               if (/token=(\d+)/.test(redirectUri)) {
@@ -981,3 +981,9 @@ export default class Wechat extends events {
     });
   }
 }
+
+process.on('unhandledRejection', error => {
+  Log.error(error);
+});
+
+export = Wechat;
