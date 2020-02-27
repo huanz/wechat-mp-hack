@@ -29,7 +29,7 @@ const Config = {
   host: HOST,
   baseurl: BASEURL,
   api: API,
-  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.140 Safari/537.36',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.122 Safari/537.36',
   upload: join(process.cwd(), 'upload'),
 };
 

@@ -1,6 +1,6 @@
 {
   "name": "wechat-mp-hack",
-  "version": "1.1.9",
+  "version": "1.1.10",
   "description": "微信公众号接口，无需微信认证实现自动创建素材、自动群发图文消息",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -23,15 +23,15 @@
   "author": "bukas",
   "license": "ISC",
   "dependencies": {
-    "request": "^2.88.0",
+    "request": "^2.88.2",
     "tough-cookie-filestore": "0.0.1"
   },
   "devDependencies": {
-    "@commitlint/cli": "^8.2.0",
-    "@commitlint/config-conventional": "^8.2.0",
-    "@types/request": "^2.48.3",
-    "husky": "^3.0.5",
-    "typescript": "^3.6.3"
+    "@commitlint/cli": "^8.3.5",
+    "@commitlint/config-conventional": "^8.3.4",
+    "@types/request": "^2.48.4",
+    "husky": "^4.2.3",
+    "typescript": "^3.8.2"
   },
   "repository": {
     "type": "git",

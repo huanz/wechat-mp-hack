@@ -23,8 +23,8 @@ const API = new Wechat('公众号账号', '公众号密码');
 
 ```javascript
 API.once('scan.login', (filepath) => {
-    // 登录二维码图片地址
-    console.log(filepath);
+  // 登录二维码图片地址
+  console.log(filepath);
 });
 ```
 
@@ -34,8 +34,8 @@ API.once('scan.login', (filepath) => {
 
 ```javascript
 API.on('scan.send', (filepath) => {
-    // 群发认证二维码地址
-    console.log(filepath);
+  // 群发认证二维码地址
+  console.log(filepath);
 });
 ```
 
@@ -45,8 +45,8 @@ API.on('scan.send', (filepath) => {
 
 ```javascript
 API.once('vcode', (filepath) => {
-    // 验证码图片地址
-    console.log(filepath);
+  // 验证码图片地址
+  console.log(filepath);
 });
 ```
 
@@ -63,8 +63,8 @@ API.once('vcode', (filepath) => {
  * @return {Promise<object>} data
  */
 API.login().then(data => {
-    console.log(data);
-}).catch(console.error.bind(console));
+  console.log(data);
+}).catch(console.error);
 ```
 
 #### loginchk
@@ -73,10 +73,10 @@ API.login().then(data => {
 
 ```javascript
 try {
-    let islogin = await API.loginchk();
-    console.log('已登录');
+  let islogin = await API.loginchk();
+  console.log('已登录');
 } catch(e) {
-    console.log('未登录');
+  console.log('未登录');
 }
 ```
 
@@ -125,8 +125,8 @@ try {
  * @return {array<string>} [].multi_item[].tags - 文章标签
 */
 API.appmsg().then((items) => {
-    console.log(items);
-}).catch(console.error.bind(console));
+  console.log(items);
+}).catch(console.error);
 ```
 
 #### filepage
@@ -154,13 +154,13 @@ API.appmsg().then((items) => {
  * @return {string} [].video_thumb_cdn_url
 */
 API.filepage().then((files) => {
-    console.log(files);
-}).catch(console.error.bind(console)); 
+  console.log(files);
+}).catch(console.error); 
 ```
 
 #### operate_appmsg
 
-创建图文素材
+创建/更新图文素材
 
 ```javascript
 /**
@@ -175,8 +175,23 @@ API.filepage().then((files) => {
  * @return {Promise} appMsgId
  */
 API.operate_appmsg(news).then((appMsgId) => {
-    console.log(appMsgId);
-}).catch(console.error.bind(console));
+  console.log(appMsgId);
+}).catch(console.error);
+```
+
+#### del_appmsg
+
+删除图文素材
+
+```javascript
+/**
+ * 删除图文素材
+ * @param {number} [appMsgId] - 图文素材id
+ */
+API.del_appmsg(appMsgId).then(res => {
+  console.log(res);
+  console.log('删除成功');
+});
 ```
 
 #### batchUpload
@@ -188,9 +203,9 @@ API.operate_appmsg(news).then((appMsgId) => {
  * 批量上传远程图片至公众号
  * @param {array<string>} imgurls - 远程图片地址
  */
-API.batchUpload(['http://wesbos.com/wp-content/uploads/2016/09/dead-zone.png']).then((results) => {
-    // results[0].fileid;
-    // results[0].cdn_url;
+API.batchUpload(['http://wesbos.com/wp-content/uploads/2016/09/dead-zone.png']).then(results => {
+  // results[0].fileid;
+  // results[0].cdn_url;
 });
 ```
 
@@ -203,9 +218,7 @@ API.batchUpload(['http://wesbos.com/wp-content/uploads/2016/09/dead-zone.png']).
  * 上传单个远程图片至公众号
  * @param {string} imgurl - 远程图片地址
  */
-API.filetransfer('http://wesbos.com/wp-content/uploads/2016/09/dead-zone.png').then((result) => {
-    console.log(result);
-});
+API.filetransfer('http://wesbos.com/wp-content/uploads/2016/09/dead-zone.png').then(console.log);
 ```
 
 #### localUpload
@@ -220,8 +233,8 @@ API.filetransfer('http://wesbos.com/wp-content/uploads/2016/09/dead-zone.png').t
  * @return {number} res.fileid - 资源id
  * @return {string} res.cdn_url - 资源链接地址
  */
-API.localUpload('qrcode-safe.png').then((result) => {
-    console.log(result);
+API.localUpload('qrcode-safe.png').then(result => {
+  console.log(result);
 });
 ```
 
@@ -235,6 +248,7 @@ API.localUpload('qrcode-safe.png').then((result) => {
  * @param {string} imgurl - 远程图片地址
  * @return {Promise<string>} - 微信cdn资源地址
  */
+API.uploadimg2cdn('https://www.baidu.com/img/baidu_resultlogo@2.png')
 ```
 
 #### preview_post
@@ -249,8 +263,8 @@ API.localUpload('qrcode-safe.png').then((result) => {
  * @return {Promise<string>} - 文章临时预览链接
  */
 API.preview_post(100000126, 2).then(post_url => {
-    console.log(post_url);
-}).catch(console.error.bind(console));
+  console.log(post_url);
+}).catch(console.error);
 ```
 
 #### preview_appmsg
@@ -265,8 +279,8 @@ API.preview_post(100000126, 2).then(post_url => {
  * @param {number} [type] - 消息类型：图文消息-10 文字-1 图片-2 语音-3 视频-15 默认-10
  */
 API.preview_appmsg('Zaker-yhz', 100000126).then(res => {
-    console.log('预览发送成功');
-}).catch(console.error.bind(console));
+  console.log('预览发送成功');
+}).catch(console.error);
 ```
 
 #### masssend
@@ -282,8 +296,8 @@ API.preview_appmsg('Zaker-yhz', 100000126).then(res => {
  * @param {number} [type] - 消息类型：图文消息-10 文字-1 图片-2 语音-3 视频-15 默认-10
  */
 API.masssend(appMsgId).then(() => {
-    console.log('success');
-}).catch(console.error.bind(console));
+  console.log('success');
+}).catch(console.error);
 ```
 
 #### cancel_time_send
@@ -296,8 +310,8 @@ API.masssend(appMsgId).then(() => {
  * @param {number} msgid 群发消息id
  */
 API.cancel_time_send(1000000041).then(() => {
-    console.log('success');
-}).catch(console.error.bind(console));
+  console.log('success');
+}).catch(console.error);
 ```
 
 #### timesend_list
@@ -318,7 +332,7 @@ API.cancel_time_send(1000000041).then(() => {
  * @return {string} msgs[].text_info.content - 文字消息内容
  */
 API.timesend_list().then(msgs => {
-    console.log(msgs);
+  console.log(msgs);
 });
 ```
 
@@ -334,8 +348,8 @@ API.timesend_list().then(msgs => {
  * @param {string} [replyId] - 回复消息id，可以消息列表看到，可选
  */
 API.singlesend('osl8HwPBTCsVbquNsnYbUfOQH8sM', '哈哈哈哈', 425131038).then(res => {
-    console.log(res);
-}).catch(console.error.bind(console));
+  console.log(res);
+}).catch(console.error);
 ```
 
 #### message
@@ -365,8 +379,8 @@ API.singlesend('osl8HwPBTCsVbquNsnYbUfOQH8sM', '哈哈哈哈', 425131038).then(r
  * @return {string} msgs[].wx_headimg_url - 用户头像地址
  */
 API.message(1).then(msgs => {
-    console.log(msgs);
-}).catch(console.error.bind(console)); 
+  console.log(msgs);
+}).catch(console.error); 
 ```
 
 #### user_list
@@ -385,7 +399,7 @@ API.message(1).then(msgs => {
  * @return {string} userlist[].user_head_img - 用户头像地址
  */
 API.user_list().then(res => {
-    console.log(res);
+  console.log(res);
 });
 ```
 
@@ -406,7 +420,7 @@ API.user_list().then(res => {
  * @return {string} user.user_head_img - 用户头像地址
  */
 API.user_info('oslHwqwYnw20jnqMca18KET91pa0').then(res => {
-    console.log(res);
+  console.log(res);
 });
 ```
 
@@ -436,7 +450,7 @@ API.user_info('oslHwqwYnw20jnqMca18KET91pa0').then(res => {
  * @return {number} user.user_in_blacklist - 是否在黑名单
  */
 API.user_info_detail('oslHwqwYnw20jnqMca18KET91pa0').then(res => {
-    console.log(res);
+  console.log(res);
 });
 ```
 
@@ -451,6 +465,6 @@ API.user_info_detail('oslHwqwYnw20jnqMca18KET91pa0').then(res => {
  * @return {Promise<object>}
  */
 API.qrdecode('qrcode-login.png').then((result) => {
-    console.log(result.text);
-}).catch(console.error.bind(console)); 
+  console.log(result.text);
+}).catch(console.error); 
 ```

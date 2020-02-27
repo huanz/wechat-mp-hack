@@ -1,6 +1,6 @@
 import { createWriteStream, createReadStream } from 'fs';
 import { join } from 'path';
-import events from 'events';
+import { EventEmitter } from 'events';
 import { createHash } from 'crypto';
 import request from 'request';
 import WechatRequest from './util/request';
@@ -9,7 +9,7 @@ import Log from './util/log';
 import { login } from './decorators/index';
 import Cache from './util/cache';
 
-class Wechat extends events {
+class Wechat extends EventEmitter {
   username: string;
   pwd: string;
   islogin: boolean;
@@ -312,6 +312,34 @@ class Wechat extends events {
           .catch(reject);
       } else {
         reject('至少有一篇新闻具有图片');
+      }
+    });
+  }
+  /**
+   * 删除图文素材
+   * @param {number} [appMsgId] - 图文素材id
+   */
+  @login
+  del_appmsg(appMsgId: number) {
+    return WechatRequest({
+      url: `${Config.api.operate_appmsg}?t=ajax-response&sub=del`,
+      headers: {
+        Referer: `${Config.api.appmsg}?begin=0&count=10&t=media/appmsg_list&type=10&action=list&lang=zh_CN&token=${this.data.token}`,
+      },
+      form: {
+        AppMsgId: appMsgId,
+        token: this.data.token,
+        f: 'json',
+        ajax: 1,
+      },
+    }).then((body: any) => {
+      if (body.base_resp.ret === 0) {
+        return body;
+      } else {
+        let msg = Log.msg(body.base_resp.ret);
+        Log.error(msg);
+        body.msg = msg;
+        throw body;
       }
     });
   }
