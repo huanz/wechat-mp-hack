@@ -27,11 +27,11 @@
     "tough-cookie-filestore": "0.0.1"
   },
   "devDependencies": {
-    "@commitlint/cli": "^8.3.5",
-    "@commitlint/config-conventional": "^8.3.4",
-    "@types/request": "^2.48.4",
-    "husky": "^4.2.3",
-    "typescript": "^3.8.2"
+    "@commitlint/cli": "^21.2.4",
+    "@commitlint/config-conventional": "^21.2.4",
+    "@types/request": "^2.48.13",
+    "husky": "^9.1.7",
+    "typescript": "^7.0.2"
   },
   "repository": {
     "type": "git",
